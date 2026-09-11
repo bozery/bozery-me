@@ -1,65 +1,23 @@
 ---
 import { ClientRouter } from 'astro:transitions';
 import BaseHead from '../components/BaseHead.astro';
-import GlowBackground from '../components/GlowBackground.astro';
+import OceanBackground from '../components/OceanBackground.astro';
 import SiteNav from '../components/SiteNav.astro';
-import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
-
-interface Props {
-	title?: string;
-	description?: string;
-	/** 宽版容器，图集之类的多列页面用 */
-	wide?: boolean;
-}
-
-const { title = SITE_TITLE, description = SITE_DESCRIPTION, wide = false } = Astro.props;
+import Footer from '../components/Footer.astro';
+import { SITE_TITLE, SITE_DESCRIPTION } from '../consts';
+interface Props { title?: string; description?: string; scene?: 'home'|'blog'|'gallery'|'about'|'article'; articleDate?: Date; updatedDate?: Date; }
+const {title=SITE_TITLE,description=SITE_DESCRIPTION,scene='home',articleDate,updatedDate}=Astro.props;
 ---
-
 <!doctype html>
 <html lang="zh-CN">
-	<head>
-		<BaseHead title={title} description={description} />
-		<ClientRouter />
-	</head>
-	<body>
-		<GlowBackground />
-		<SiteNav />
-
-		<main class={wide ? 'wide' : ''}>
-			<slot />
-		</main>
-
-		<footer class="site-foot">
-			<span>© 2026 Bozery</span>
-			<span class="sep">·</span>
-			<span>bozery.me</span>
-		</footer>
-	</body>
+<head><BaseHead title={title} description={description} articleDate={articleDate} updatedDate={updatedDate} /><ClientRouter fallback="swap" /></head>
+<body data-scene={scene}>
+  <a class="skip-link" href="#main-content">跳至正文</a>
+  <OceanBackground />
+  <div class="mobile-top-shade" aria-hidden="true" transition:persist="mobile-top-shade" transition:animate="none"></div>
+  {scene !== 'home' && <header class="site-signature" transition:name="site-signature"><a href="/" aria-label="Bozery 主页">BOZERY<span>.</span></a></header>}
+  <SiteNav />
+  <main id="main-content" class:list={['page',`page-${scene}`]} transition:name="page-content" tabindex="-1"><slot /></main>
+  <Footer />
+</body>
 </html>
-
-<style>
-	.site-foot {
-		position: relative;
-		z-index: 1;
-		width: 100%;
-		max-width: calc(100% - var(--nav-w) - 3em);
-		margin: 0 0 0 var(--nav-w);
-		padding: 0 0 3.5rem 0;
-		text-align: center;
-		font-size: 0.72rem;
-		letter-spacing: 0.14em;
-		color: var(--ink-faint);
-	}
-	.site-foot .sep {
-		margin: 0 0.5em;
-		opacity: 0.6;
-	}
-
-	@media (max-width: 860px) {
-		.site-foot {
-			margin-left: 0;
-			max-width: calc(100% - 3em);
-			padding-bottom: 6.5rem;
-		}
-	}
-</style>

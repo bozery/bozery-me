@@ -1,5 +1,2 @@
-// Place any global data in this file.
-// You can import this data from anywhere in your site by using the `import` keyword.
-
-export const SITE_TITLE = 'Bozery';
-export const SITE_DESCRIPTION = 'Bozery 的主页——设定、随笔与图集。';
+export const SITE_TITLE='Bozery';
+export const SITE_DESCRIPTION='Bozery 的个人网站：随笔、建站小记、自绘与委托的 OC 作品。';

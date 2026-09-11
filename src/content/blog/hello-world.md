@@ -2,6 +2,7 @@
 title: '关于 Bozery 的第一篇'
 description: '开站说明：这个站打算放什么。'
 pubDate: 'Sep 11 2026'
+category: '建站小记'
 ---
 
 给 Bozery 建了个主页，第一篇就说说这个站准备放什么。

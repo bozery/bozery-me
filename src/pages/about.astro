@@ -1,115 +1,50 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import XIcon from '../assets/icons/x.svg';
+import QQIcon from '../assets/icons/qq.svg';
+import {profile} from '../data/profile';
+import {publicUrl} from '../data/links';
 ---
-
-<BaseLayout title="关于 · Bozery" description="关于 Bozery 和这个站。">
-	<header class="head">
-		<p class="kicker">ABOUT</p>
-		<h1>关于</h1>
-	</header>
-
-	<section class="block">
-		<h2>关于 Bozery</h2>
-		<p>
-			这里可以写关于 Bozery 的一切——角色的来龙去脉、创作它的初心、
-			名字的由来，或者干脆就是你对这个角色的一些碎碎念。
-		</p>
-		<p>
-			它不一定是「设定」，也可以是散的片段：某天想到的一个场景、
-			一句它可能会说的话、一件它做过的小事。
-		</p>
-	</section>
-
-	<section class="block">
-		<h2>关于这个站</h2>
-		<p>这个站是给 Bozery 做的主页，内容分三块：</p>
-		<ul class="list">
-			<li>
-				<span class="k">设定</span>
-				<span class="v">角色是谁——外貌、性格、来历</span>
-			</li>
-			<li>
-				<span class="k">随笔</span>
-				<span class="v">想到什么写什么</span>
-			</li>
-			<li>
-				<span class="k">图集</span>
-				<span class="v">它长什么样</span>
-			</li>
-		</ul>
-	</section>
-
-	<section class="block">
-		<h2>这个站怎么做的</h2>
-		<p>
-			Astro 搭建，纯静态，放在 Vercel 上，域名 <code>bozery.me</code>。
-			随笔写在 <code>src/content/blog/</code> 里，图片放在 <code>src/assets/</code>，
-			推上去就自动发布。
-		</p>
-	</section>
+<BaseLayout scene="about" title="关于 · Bozery" description={profile.paragraphs.join(' ')}>
+  <div class="content-column about-content">
+    <header class="page-heading"><h1>{profile.aboutTitle}</h1></header>
+    <div class="about-text">{profile.paragraphs.filter(p=>p.trim()).map(p=><p>{p}</p>)}</div>
+    {profile.contacts.length>0&&<contact-links aria-label="联系方式">
+      <h2 class="contact-heading">{profile.contactHeading}</h2>
+      <div class="social-icons">{profile.contacts.map(contact=>{
+        const url=publicUrl(contact.url,true);
+        return <div class="social-item">
+          {url?<a class="social-icon" href={url} target={url.startsWith('http')?'_blank':undefined} rel={url.startsWith('http')?'noopener noreferrer':undefined} aria-label={`${contact.label}：${contact.value}，新窗口打开`} title={`${contact.label}：${contact.value}`}>
+            {contact.icon==='x'?<XIcon aria-hidden="true"/>:contact.icon==='qq'?<QQIcon aria-hidden="true"/>:<span aria-hidden="true">↗</span>}
+          </a>:<button class="social-icon" type="button" data-copy={contact.value} data-platform={contact.label} aria-label={`${contact.label}：${contact.value}，点击复制`} title={`${contact.label}：${contact.value}（点击复制）`}>
+            {contact.icon==='qq'?<QQIcon aria-hidden="true"/>:<span aria-hidden="true">@</span>}
+          </button>}
+        </div>;
+      })}</div>
+      <p class="contact-status" role="status" aria-live="polite"></p>
+    </contact-links>}
+  </div>
 </BaseLayout>
-
+<script>
+  class ContactLinks extends HTMLElement{
+    connectedCallback(){
+      if(this.dataset.ready)return;this.dataset.ready='true';
+      const status=this.querySelector<HTMLElement>('.contact-status')!;
+      this.querySelectorAll<HTMLButtonElement>('[data-copy]').forEach(button=>button.addEventListener('click',async()=>{
+        const value=button.dataset.copy??'';
+        status.textContent=`${button.dataset.platform}：${value}`;
+        try{await navigator.clipboard.writeText(value);if(this.isConnected)status.textContent=`${button.dataset.platform}：${value} · 已复制`;}catch{/* 始终显示账号，便于手动复制。 */}
+      }));
+    }
+  }
+  if(!customElements.get('contact-links'))customElements.define('contact-links',ContactLinks);
+</script>
 <style>
-	.head {
-		margin-bottom: 2.4rem;
-	}
-	.kicker {
-		font-size: 0.68rem;
-		letter-spacing: 0.34em;
-		color: var(--ink-dim);
-		margin: 0 0 0.7rem 0;
-	}
-	h1 {
-		font-size: clamp(2rem, 5vw, 2.6rem);
-		letter-spacing: 0.06em;
-		margin: 0;
-	}
-
-	.block {
-		padding: 2.2rem 0 0.2rem 0;
-		margin-bottom: 1.4rem;
-		border-top: 1px solid var(--line);
-	}
-	.block h2 {
-		font-size: 0.78rem;
-		letter-spacing: 0.26em;
-		color: var(--ink-dim);
-		text-transform: uppercase;
-		margin-bottom: 1.1rem;
-	}
-	p {
-		color: var(--ink-soft);
-	}
-
-	.list {
-		list-style: none;
-		margin: 0;
-		padding: 0;
-	}
-	.list li {
-		display: flex;
-		gap: 1.1rem;
-		align-items: baseline;
-		padding: 0.75rem 0.9rem;
-		margin-bottom: 0.5rem;
-		border-radius: var(--radius);
-		background: var(--card);
-		border: 1px solid var(--line);
-		backdrop-filter: blur(8px);
-		-webkit-backdrop-filter: blur(8px);
-		transition: border-color 0.35s ease, transform 0.35s ease;
-	}
-	.list li:hover {
-		border-color: rgba(111, 220, 228, 0.3);
-		transform: translateY(-2px);
-	}
-	.list .k {
-		flex: 0 0 3em;
-		font-size: 0.88rem;
-		color: var(--cyan-bright);
-	}
-	.list .v {
-		font-size: 0.88rem;
-		color: var(--ink-soft);
-	}
+  contact-links{display:block;margin-top:34px;}
+  .contact-heading{font-size:1rem;font-weight:400;color:var(--soft);margin-bottom:16px;}
+  .social-icons{display:flex;gap:20px;align-items:center;}
+  .social-icon{display:grid;place-items:center;width:52px;height:52px;padding:13px;background:#8ddad908;border:1px solid var(--line);border-radius:50%;color:var(--soft);transition:color .25s,border-color .25s,background .25s;}
+  .social-icon:hover{color:var(--ice);background:#8ddad915;border-color:#8ddad970;}
+  .social-icon :global(svg){width:23px;height:23px;fill:currentColor;}
+  .contact-status{min-height:28px;margin-top:18px;font-size:.875rem;color:var(--muted);user-select:text;}
 </style>

@@ -8,7 +8,7 @@ import { defineConfig, fontProviders } from 'astro/config';
 export default defineConfig({
 	// 上线后的正式地址
 	site: 'https://bozery.me',
-	integrations: [mdx(), sitemap()],
+	integrations: [mdx(), sitemap({ filter: (page) => !new URL(page).pathname.startsWith('/concept') })],
 	fonts: [
 		{
 			provider: fontProviders.local(),

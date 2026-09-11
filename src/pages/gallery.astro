@@ -1,182 +1,23 @@
 ---
-import { Image } from 'astro:assets';
-import type { ImageMetadata } from 'astro';
+import {Image} from 'astro:assets';
 import BaseLayout from '../layouts/BaseLayout.astro';
-
-// 自动收集 src/assets/oc/ 下所有 oc-*.jpg，按文件名排序
-const modules = import.meta.glob<{ default: ImageMetadata }>('../assets/oc/oc-*.jpg', {
-	eager: true,
-});
-const images = Object.keys(modules)
-	.sort()
-	.map((key) => modules[key].default);
+import {gallery} from '../data/gallery';
 ---
-
-<BaseLayout title="图集 · Bozery" description="Bozery 的立绘、插画与约稿作品。" wide>
-	<header class="head">
-		<p class="kicker">GALLERY</p>
-		<h1>图集</h1>
-		<p class="lead">立绘、插画、约稿 —— 一共 {images.length} 张。</p>
-	</header>
-
-	<div class="grid">
-		{
-			images.map((src, i) => (
-				<figure>
-					<a class="lb" href={src.src} data-full={src.src} aria-label={`查看第 ${i + 1} 张`}>
-						<Image
-							src={src}
-							widths={[360, 720, 1080]}
-							sizes="(max-width: 860px) 88vw, 300px"
-							alt={`Bozery 图 ${i + 1}`}
-							loading={i < 4 ? 'eager' : 'lazy'}
-						/>
-					</a>
-					<figcaption>NO.{String(i + 1).padStart(2, '0')}</figcaption>
-				</figure>
-			))
-		}
-	</div>
-
-	<dialog id="lightbox" class="lightbox">
-		<button class="lb-close" type="button" aria-label="关闭">×</button>
-		<img id="lb-img" alt="" />
-	</dialog>
+<BaseLayout scene="gallery" title="图集 · Bozery" description="Bozery 的自绘与委托 OC 作品。">
+  <header class="page-heading gallery-heading"><h1>图集</h1><span>{gallery.length} 幅</span></header>
+  <art-gallery>
+    <div class="gallery-grid">{gallery.map((art,i)=><figure id={art.id}>
+      <a class="art-link" href={art.image.src} data-open-art={art.id} aria-label={`查看大图：${art.title}`}>
+        <Image src={art.image} widths={[360,720,1080]} sizes="(max-width:580px) 88vw, (max-width:1000px) 40vw, 28vw" alt={art.alt} loading={i<3?'eager':'lazy'}/>
+        <span class="enlarge-icon" aria-hidden="true">↗</span>
+      </a>
+      <figcaption><div class="art-title-row"><span class="art-title">{art.title}</span>{art.kindLabel&&<span class="art-kind">{art.kindLabel}</span>}</div>{art.artist&&<p class="art-credit">画师：{art.artistUrl?<a href={art.artistUrl} target="_blank" rel="noopener noreferrer">{art.artist}</a>:art.artist}</p>}</figcaption>
+    </figure>)}</div>
+    {gallery.map(art=><dialog class="art-dialog" data-art-dialog={art.id} aria-labelledby={`title-${art.id}`}>
+      <div class="art-dialog-top"><h2 id={`title-${art.id}`}>{art.title}</h2><button class="dialog-close" type="button" aria-label="关闭大图">×</button></div>
+      <div class="art-dialog-image"><img data-src={art.image.src} alt={art.alt} width={art.image.width} height={art.image.height}/></div>
+      {(art.artist||art.kindLabel||art.date||art.description)&&<div class="art-details"><dl>{art.kindLabel&&<div><dt>类型</dt><dd>{art.kindLabel}</dd></div>}{art.artist&&<div><dt>画师</dt><dd>{art.artistUrl?<a href={art.artistUrl} target="_blank" rel="noopener noreferrer">{art.artist}<span aria-hidden="true"> ↗</span></a>:art.artist}</dd></div>}{art.date&&<div><dt>日期</dt><dd>{art.date}</dd></div>}</dl>{art.description&&<p>{art.description}</p>}</div>}
+    </dialog>)}
+  </art-gallery>
 </BaseLayout>
-
-<style>
-	.head {
-		margin-bottom: 2.6rem;
-	}
-	.kicker {
-		font-size: 0.68rem;
-		letter-spacing: 0.34em;
-		color: var(--ink-dim);
-		margin: 0 0 0.7rem 0;
-	}
-	h1 {
-		font-size: clamp(2rem, 5vw, 2.6rem);
-		letter-spacing: 0.06em;
-		margin: 0 0 0.5rem 0;
-	}
-	.lead {
-		font-size: 0.85rem;
-		color: var(--ink-dim);
-		margin: 0;
-	}
-
-	/* 瀑布流：不同比例的图各自保持高度，不裁切 */
-	.grid {
-		columns: 3 220px;
-		column-gap: 1.1rem;
-	}
-	.grid figure {
-		break-inside: avoid;
-		margin: 0 0 1.1rem 0;
-	}
-	.grid a {
-		display: block;
-		border-radius: var(--radius);
-		overflow: hidden;
-		border: 1px solid var(--line);
-		background: var(--card);
-		line-height: 0;
-		transition: border-color 0.4s ease, transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
-			box-shadow 0.45s ease;
-	}
-	.grid a:hover {
-		border-color: rgba(111, 220, 228, 0.45);
-		transform: translateY(-5px);
-		box-shadow: 0 22px 46px -18px rgba(111, 220, 228, 0.55);
-	}
-	.grid :global(img) {
-		width: 100%;
-		height: auto;
-		display: block;
-		border-radius: 0;
-		transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1), filter 0.5s ease;
-		filter: saturate(0.95);
-	}
-	.grid a:hover :global(img) {
-		transform: scale(1.055);
-		filter: saturate(1.08);
-	}
-	figcaption {
-		margin-top: 0.55rem;
-		font-size: 0.62rem;
-		letter-spacing: 0.2em;
-		color: var(--ink-faint);
-	}
-
-	/* 灯箱 */
-	.lightbox {
-		border: none;
-		padding: 0;
-		background: transparent;
-		max-width: 94vw;
-		max-height: 94vh;
-		overflow: visible;
-	}
-	.lightbox::backdrop {
-		background: rgba(3, 8, 12, 0.9);
-		backdrop-filter: blur(10px);
-		-webkit-backdrop-filter: blur(10px);
-	}
-	.lightbox img {
-		max-width: 92vw;
-		max-height: 88vh;
-		width: auto;
-		height: auto;
-		border-radius: var(--radius);
-		border: 1px solid var(--line);
-		box-shadow: 0 30px 90px -30px rgba(111, 220, 228, 0.45);
-	}
-	.lb-close {
-		position: absolute;
-		top: -2.4rem;
-		right: 0;
-		width: 2rem;
-		height: 2rem;
-		border-radius: 50%;
-		border: 1px solid var(--line);
-		background: var(--card);
-		color: var(--ink-soft);
-		font-size: 1.1rem;
-		line-height: 1;
-		cursor: pointer;
-		transition: color 0.3s ease, border-color 0.3s ease;
-	}
-	.lb-close:hover {
-		color: var(--cyan-bright);
-		border-color: rgba(111, 220, 228, 0.5);
-	}
-</style>
-
-<script>
-	const lb = document.getElementById('lightbox') as HTMLDialogElement | null;
-	const lbImg = document.getElementById('lb-img') as HTMLImageElement | null;
-
-	if (lb && lbImg) {
-		document.addEventListener('click', (e) => {
-			const target = e.target as HTMLElement;
-			const link = target.closest('a.lb') as HTMLAnchorElement | null;
-
-			if (link) {
-				e.preventDefault();
-				lbImg.src = link.dataset.full || link.href;
-				lbImg.alt = link.querySelector('img')?.getAttribute('alt') || '';
-				lb.showModal();
-				return;
-			}
-
-			// 点背景或关闭按钮都关掉
-			if (target === lb || target.closest('.lb-close')) {
-				lb.close();
-			}
-		});
-
-		lb.addEventListener('close', () => {
-			lbImg.removeAttribute('src');
-		});
-	}
-</script>
+<script>import '../scripts/art-gallery';</script>

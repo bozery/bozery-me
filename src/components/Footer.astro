@@ -1,16 +1,3 @@
----
-const today = new Date();
----
-
-<footer>
-	&copy; {today.getFullYear()} Bozery · 用 Astro 搭的小站
-</footer>
-<style>
-	footer {
-		padding: 2em 1em 4em 1em;
-		background: linear-gradient(var(--gray-gradient)) no-repeat;
-		color: rgb(var(--gray));
-		text-align: center;
-		font-size: 0.8em;
-	}
-</style>
+<div class="motion-control" transition:name="motion-control">
+  <button type="button" data-motion-toggle aria-pressed="false"><span class="pause-symbol" aria-hidden="true">Ⅱ</span><span class="motion-label">暂停动态</span></button>
+</div>
