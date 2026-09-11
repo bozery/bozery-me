@@ -1,28 +1,115 @@
 ---
-import AboutHeroImage from '../assets/blog-placeholder-about.jpg';
-import Layout from '../layouts/BlogPost.astro';
+import BaseLayout from '../layouts/BaseLayout.astro';
 ---
 
-<Layout
-	title="关于"
-	description="关于 Bozery 和这个站"
-	pubDate={new Date('September 11 2026')}
-	heroImage={AboutHeroImage}
->
-	<p>
-		这里可以写关于 Bozery 的一切——角色的来龙去脉、创作它的初心、
-		名字的由来，或者干脆就是你对这个角色的一些碎碎念。
-	</p>
+<BaseLayout title="关于 · Bozery" description="关于 Bozery 和这个站。">
+	<header class="head">
+		<p class="kicker">ABOUT</p>
+		<h1>关于</h1>
+	</header>
 
-	<p>
-		也可以把「关于」页面理解成站点说明：这个站是给 Bozery 做的主页，
-		内容分三块——<strong>设定</strong>（角色是谁）、<strong>随笔</strong>（想到什么写什么）、
-		<strong>图集</strong>（它的样子）。
-	</p>
+	<section class="block">
+		<h2>关于 Bozery</h2>
+		<p>
+			这里可以写关于 Bozery 的一切——角色的来龙去脉、创作它的初心、
+			名字的由来，或者干脆就是你对这个角色的一些碎碎念。
+		</p>
+		<p>
+			它不一定是「设定」，也可以是散的片段：某天想到的一个场景、
+			一句它可能会说的话、一件它做过的小事。
+		</p>
+	</section>
 
-	<p>
-		站用 Astro 搭建，纯静态，随笔写在
-		<code>src/content/blog/</code> 里，图片放在 <code>src/assets/</code>，
-		推上去就自动发布。
-	</p>
-</Layout>
+	<section class="block">
+		<h2>关于这个站</h2>
+		<p>这个站是给 Bozery 做的主页，内容分三块：</p>
+		<ul class="list">
+			<li>
+				<span class="k">设定</span>
+				<span class="v">角色是谁——外貌、性格、来历</span>
+			</li>
+			<li>
+				<span class="k">随笔</span>
+				<span class="v">想到什么写什么</span>
+			</li>
+			<li>
+				<span class="k">图集</span>
+				<span class="v">它长什么样</span>
+			</li>
+		</ul>
+	</section>
+
+	<section class="block">
+		<h2>这个站怎么做的</h2>
+		<p>
+			Astro 搭建，纯静态，放在 Vercel 上，域名 <code>bozery.me</code>。
+			随笔写在 <code>src/content/blog/</code> 里，图片放在 <code>src/assets/</code>，
+			推上去就自动发布。
+		</p>
+	</section>
+</BaseLayout>
+
+<style>
+	.head {
+		margin-bottom: 2.4rem;
+	}
+	.kicker {
+		font-size: 0.68rem;
+		letter-spacing: 0.34em;
+		color: var(--ink-dim);
+		margin: 0 0 0.7rem 0;
+	}
+	h1 {
+		font-size: clamp(2rem, 5vw, 2.6rem);
+		letter-spacing: 0.06em;
+		margin: 0;
+	}
+
+	.block {
+		padding: 2.2rem 0 0.2rem 0;
+		margin-bottom: 1.4rem;
+		border-top: 1px solid var(--line);
+	}
+	.block h2 {
+		font-size: 0.78rem;
+		letter-spacing: 0.26em;
+		color: var(--ink-dim);
+		text-transform: uppercase;
+		margin-bottom: 1.1rem;
+	}
+	p {
+		color: var(--ink-soft);
+	}
+
+	.list {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
+	.list li {
+		display: flex;
+		gap: 1.1rem;
+		align-items: baseline;
+		padding: 0.75rem 0.9rem;
+		margin-bottom: 0.5rem;
+		border-radius: var(--radius);
+		background: var(--card);
+		border: 1px solid var(--line);
+		backdrop-filter: blur(8px);
+		-webkit-backdrop-filter: blur(8px);
+		transition: border-color 0.35s ease, transform 0.35s ease;
+	}
+	.list li:hover {
+		border-color: rgba(111, 220, 228, 0.3);
+		transform: translateY(-2px);
+	}
+	.list .k {
+		flex: 0 0 3em;
+		font-size: 0.88rem;
+		color: var(--cyan-bright);
+	}
+	.list .v {
+		font-size: 0.88rem;
+		color: var(--ink-soft);
+	}
+</style>
