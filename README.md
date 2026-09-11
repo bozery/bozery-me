@@ -17,7 +17,7 @@ Astro 个人网站。页面包括主页、随笔、图集、关于，使用连�
 homeTagline 设置主页短句；aboutTitle 设置关于页标题；paragraphs 每个字符串是一段正文。contactHeading 设置联系方式的小标题。
 contacts 每条包含 label（平台名）、value（账号）、可选 url（https://、mailto: 或 tel: 地址）与 icon（图标）。
 没有填写联系方式时，不显示整个联系方式区块。有链接时点击图标跳转；只有账号时点击图标复制，并显示账号。
-icon 可填 x、qq 或 link。当前配置为 X @_bozery 和 QQ 1738983866。
+icon 可填 x、qq 或 link。
 请只填准备公开的信息。
 
 ## 图集与画师配置
