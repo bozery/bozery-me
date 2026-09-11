@@ -1,0 +1,28 @@
+---
+import AboutHeroImage from '../assets/blog-placeholder-about.jpg';
+import Layout from '../layouts/BlogPost.astro';
+---
+
+<Layout
+	title="关于"
+	description="关于 Bozery 和这个站"
+	pubDate={new Date('September 11 2026')}
+	heroImage={AboutHeroImage}
+>
+	<p>
+		这里可以写关于 Bozery 的一切——角色的来龙去脉、创作它的初心、
+		名字的由来，或者干脆就是你对这个角色的一些碎碎念。
+	</p>
+
+	<p>
+		也可以把「关于」页面理解成站点说明：这个站是给 Bozery 做的主页，
+		内容分三块——<strong>设定</strong>（角色是谁）、<strong>随笔</strong>（想到什么写什么）、
+		<strong>图集</strong>（它的样子）。
+	</p>
+
+	<p>
+		站用 Astro 搭建，纯静态，随笔写在
+		<code>src/content/blog/</code> 里，图片放在 <code>src/assets/</code>，
+		推上去就自动发布。
+	</p>
+</Layout>

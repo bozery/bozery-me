@@ -1,0 +1,82 @@
+---
+import BaseHead from '../components/BaseHead.astro';
+import Footer from '../components/Footer.astro';
+import Header from '../components/Header.astro';
+import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
+
+const artworks = [
+	{ title: '立绘 · 待补充', note: '把图片放进 src/assets/ ，然后在这行填文件名' },
+	{ title: '头像 · 待补充', note: '把图片放进 src/assets/ ，然后在这行填文件名' },
+	{ title: '插画 · 待补充', note: '把图片放进 src/assets/ ，然后在这行填文件名' },
+];
+---
+
+<!doctype html>
+<html lang="zh-CN">
+	<head>
+		<BaseHead title={`图集 · ${SITE_TITLE}`} description={SITE_DESCRIPTION} />
+	</head>
+	<body>
+		<Header />
+		<main>
+			<h1>图集</h1>
+			<p class="lead">Bozery 的立绘、插画和约稿作品。</p>
+			<ul class="grid">
+				{
+					artworks.map((art) => (
+						<li>
+							<div class="thumb">
+								<span>图</span>
+							</div>
+							<h3>{art.title}</h3>
+							<p>{art.note}</p>
+						</li>
+					))
+				}
+			</ul>
+		</main>
+		<Footer />
+	</body>
+</html>
+
+<style>
+	main {
+		width: 960px;
+	}
+	h1 {
+		font-size: 2.2em;
+	}
+	.lead {
+		color: rgb(var(--gray));
+		font-size: 0.95em;
+		margin-bottom: 2em;
+	}
+	.grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+		gap: 1.8em;
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
+	.grid h3 {
+		font-size: 1.05em;
+		margin: 0.8em 0 0.2em 0;
+	}
+	.grid p {
+		font-size: 0.78em;
+		color: rgb(var(--gray));
+		margin: 0;
+	}
+	.thumb {
+		aspect-ratio: 4 / 5;
+		border-radius: 12px;
+		background: rgb(var(--gray-light));
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		color: rgb(var(--gray));
+		font-size: 0.85em;
+		letter-spacing: 0.1em;
+	}
+</style>
