@@ -133,7 +133,9 @@ const profile: [string, string][] = [
 		height: 170px;
 		border-radius: 50%;
 		object-fit: cover;
-		border: 1px solid rgba(168, 238, 243, 0.32);
+		/* 原图背景偏灰，在深色页面上容易糊掉，稍提亮度让它浮出来 */
+		filter: brightness(1.12) saturate(1.05);
+		border: 1px solid rgba(168, 238, 243, 0.38);
 		box-shadow:
 			0 20px 55px -14px rgba(0, 0, 0, 0.8),
 			0 0 44px -8px rgba(111, 220, 228, 0.42);
