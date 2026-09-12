@@ -6,7 +6,7 @@ export interface Contact {
 }
 export const profile={
   homeTagline:'狼在海岸奔跑',
-  aboutTitle:'狼和他的旅程。',
+  aboutTitle:'狼仍在他的旅途中。',
   paragraphs:[
     '喜欢唱歌，喜欢绘画，喜欢...一切会让生命流动的东西。',
     '很高兴见到你，在我海岸的一隅。',
