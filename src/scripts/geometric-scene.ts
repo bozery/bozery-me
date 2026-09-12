@@ -7,13 +7,13 @@ let enterTimer: ReturnType<typeof setTimeout> | undefined;
 let detachAbort: (() => void) | undefined;
 const background = () => document.querySelector<HTMLElement>('[data-geo-background]');
 const stopped = () => reducedMotion.matches;
-const isConcept = (path: string) => /^\/concept(?:\/notes(?:\/.*)?|\/gallery\/?|\/about\/?)?\/?$/.test(path);
+const isTrainRoute = (path: string) => /^\/(?:blog(?:\/.*)?|gallery\/?|about\/?)?$/.test(path);
 const sceneForPath = (path: string): TrainView => {
   const route=path.replace(/\/$/,'');
-  if(route==='/concept')return 'home';
-  if(route==='/concept/gallery')return 'gallery';
-  if(route==='/concept/about')return 'about';
-  return route==='/concept/notes'?'notes':'article';
+  if(route==='')return 'home';
+  if(route==='/gallery')return 'gallery';
+  if(route==='/about')return 'about';
+  return route==='/blog'?'notes':'article';
 };
 const host = background() as (HTMLElement & { trainWorld?: ReturnType<typeof createTrainWorld> }) | null;
 const world = host ? (host.trainWorld ??= createTrainWorld(host)) : null;
@@ -22,7 +22,7 @@ function updateNavigation() {
   const nav = document.querySelector<HTMLElement>('.geo-nav');
   if (!nav) return;
   const scene = document.body.dataset.geoScene ?? 'home';
-  const activePath = scene==='home'?'/concept/':`/concept/${scene==='article'?'notes':scene}/`;
+  const activePath = scene==='home'?'/':`/${scene==='article'||scene==='notes'?'blog':scene}/`;
   nav.querySelectorAll<HTMLAnchorElement>('[data-geo-nav]').forEach(link => {
     const current = link.getAttribute('href') === activePath;
     if (current) link.setAttribute('aria-current', 'page');
@@ -70,7 +70,7 @@ function enterScene(animate: boolean) {
 document.addEventListener('astro:before-preparation', (rawEvent) => {
   const event = rawEvent as TransitionBeforePreparationEvent;
   const backdrop = background();
-  if (!backdrop || !isConcept(event.to.pathname) || event.from.pathname === event.to.pathname) return;
+  if (!backdrop || !isTrainRoute(event.to.pathname) || event.from.pathname === event.to.pathname) return;
   detachAbort?.();
   clearTimeout(enterTimer);
   const id = ++navigationId;
@@ -100,7 +100,7 @@ document.addEventListener('astro:before-preparation', (rawEvent) => {
 
 document.addEventListener('astro:before-swap', rawEvent => {
   const event = rawEvent as TransitionBeforeSwapEvent;
-  if (!background() || !isConcept(event.to.pathname)) return;
+  if (!background() || !isTrainRoute(event.to.pathname)) return;
   // Our live WebGL scene owns the animation. Native screenshots
   // are unnecessary here and can fail when capturing a scrolled, long article.
   // Skipping the snapshot animation still lets Astro swap the DOM and history.

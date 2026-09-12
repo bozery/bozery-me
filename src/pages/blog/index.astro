@@ -1,30 +1,37 @@
 ---
-import {getCollection} from 'astro:content';
-import {Image} from 'astro:assets';
-import BaseLayout from '../../layouts/BaseLayout.astro';
-import FormattedDate from '../../components/FormattedDate.astro';
-import {groupPostsByYear} from '../../data/posts';
-const posts=await getCollection('blog');
-const years=groupPostsByYear(posts);
+import { getCollection } from 'astro:content';
+import GeometricLayout from '../../layouts/GeometricLayout.astro';
+import { groupPostsByYear } from '../../data/posts';
+const posts = await getCollection('blog');
+const groups = groupPostsByYear(posts);
+const monthDay = new Intl.DateTimeFormat('zh-CN', { month: '2-digit', day: '2-digit', timeZone: 'Asia/Shanghai' });
+const excerpt = (body: string | undefined, description: string) => {
+  const text = body?.replace(/\u200b/g, '').trim().split(/\n\s*\n/)[0]?.replace(/[#*_`>]/g, '') || description;
+  return text.length > 74 ? `${text.slice(0, 74)}…` : text;
+};
 ---
-<BaseLayout scene="blog" title="随笔 · Bozery" description="按年份整理的个人随笔与建站小记。">
-  <div class="content-column">
-    <header class="page-heading"><h1>随笔</h1><span>{posts.length} 篇</span></header>
-    {years.length ? years.map(group=><section class="year-group" aria-labelledby={`year-${group.year}`}>
-      <h2 class="year-heading" id={`year-${group.year}`}>{group.year}<span>{group.posts.length} 篇</span></h2>
-      <div class="notes-list">{group.posts.map(post=><a class="note-entry" href={`/blog/${post.id}/`}>
-        {post.data.heroImage&&<Image class="note-cover" src={post.data.heroImage} width={900} alt={post.data.heroImageAlt??''} loading="lazy" />}
-        <div class="note-meta"><FormattedDate date={post.data.pubDate} /><span>{post.data.category}</span></div>
-        <h3>{post.data.title}</h3><p>{post.data.description}</p><span class="note-arrow" aria-hidden="true">↗</span>
-      </a>)}</div>
-    </section>) : <p class="empty">还没有随笔。</p>}
-    <a class="rss-link" href="/rss.xml">RSS 订阅</a>
+<GeometricLayout scene="notes" title="随笔 · Bozery" description="把走过的路，和当时的自己，留在这里。" canonicalPath="/blog/">
+  <div class="geo-notes-shell">
+    <header class="geo-notes-heading" data-geo-enter>
+      <div>
+        <p class="geo-eyebrow">02 / WORDS ALONG THE WAY</p>
+        <h1><span class="geo-display-word" lang="en">NOTES</span><span class="geo-heading-chinese">随笔</span></h1>
+        <p class="geo-notes-intro">把走过的路，和当时的自己，留在这里。</p>
+      </div>
+      <span class="geo-post-count">{String(posts.length).padStart(2, '0')} <span>篇文字</span></span>
+    </header>
+    <div class="geo-notes-list" data-geo-enter>
+      {groups.map(group => <section class="geo-year-group" aria-labelledby={`geo-year-${group.year}`}>
+        <h2 id={`geo-year-${group.year}`}>{group.year}</h2>
+        <div class="geo-year-entries">{group.posts.map(post => <a class="geo-note" href={`/blog/${post.id}/`}>
+          <div class="geo-note-meta"><time datetime={post.data.pubDate.toISOString()}>{monthDay.format(post.data.pubDate)}</time><span>{post.data.category}</span></div>
+          <h3>{post.data.title}</h3>
+          <p>{excerpt(post.body, post.data.description)}</p>
+          <span class="geo-note-arrow" aria-hidden="true">↗</span>
+        </a>)}</div>
+      </section>)}
+      {!posts.length && <p class="geo-notes-empty">还没有随笔。</p>}
+    </div>
+    <div class="geo-notes-bottom" data-geo-enter><span>一些片刻，一些念头。</span><a href="/rss.xml" data-astro-reload>RSS 订阅 <span aria-hidden="true">↗</span></a></div>
   </div>
-</BaseLayout>
-<style>
-  .year-group+.year-group{margin-top:42px;}
-  .year-heading{display:flex;align-items:baseline;gap:16px;font-size:1.125rem;color:var(--soft);margin-bottom:16px;line-height:1.6;}
-  .year-heading span{font-size:.8125rem;color:var(--muted);}
-  .note-entry h3{font-size:1.45rem;line-height:1.6;margin:12px 0 10px;color:#e5f2f2;}
-  @media(max-width:700px){.year-group+.year-group{margin-top:32px;}.note-entry h3{font-size:1.25rem;}}
-</style>
+</GeometricLayout>

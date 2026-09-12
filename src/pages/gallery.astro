@@ -1,23 +1,28 @@
 ---
-import {Image} from 'astro:assets';
-import BaseLayout from '../layouts/BaseLayout.astro';
-import {gallery} from '../data/gallery';
+import { Image } from 'astro:assets';
+import GeometricLayout from '../layouts/GeometricLayout.astro';
+import { gallery } from '../data/gallery';
 ---
-<BaseLayout scene="gallery" title="图集 · Bozery" description="Bozery 的自绘与委托 OC 作品。">
-  <header class="page-heading gallery-heading"><h1>图集</h1><span>{gallery.length} 幅</span></header>
-  <art-gallery>
-    <div class="gallery-grid">{gallery.map((art,i)=><figure id={art.id}>
-      <a class="art-link" href={art.image.src} data-open-art={art.id} aria-label={`查看大图：${art.title}`}>
-        <Image src={art.image} widths={[360,720,1080]} sizes="(max-width:580px) 88vw, (max-width:1000px) 40vw, 28vw" alt={art.alt} loading={i<3?'eager':'lazy'}/>
-        <span class="enlarge-icon" aria-hidden="true">↗</span>
-      </a>
-      <figcaption><div class="art-title-row"><span class="art-title">{art.title}</span>{art.kindLabel&&<span class="art-kind">{art.kindLabel}</span>}</div>{art.artist&&<p class="art-credit">画师：{art.artistUrl?<a href={art.artistUrl} target="_blank" rel="noopener noreferrer">{art.artist}</a>:art.artist}</p>}</figcaption>
-    </figure>)}</div>
-    {gallery.map(art=><dialog class="art-dialog" data-art-dialog={art.id} aria-labelledby={`title-${art.id}`}>
-      <div class="art-dialog-top"><h2 id={`title-${art.id}`}>{art.title}</h2><button class="dialog-close" type="button" aria-label="关闭大图">×</button></div>
-      <div class="art-dialog-image"><img data-src={art.image.src} alt={art.alt} width={art.image.width} height={art.image.height}/></div>
-      {(art.artist||art.kindLabel||art.date||art.description)&&<div class="art-details"><dl>{art.kindLabel&&<div><dt>类型</dt><dd>{art.kindLabel}</dd></div>}{art.artist&&<div><dt>画师</dt><dd>{art.artistUrl?<a href={art.artistUrl} target="_blank" rel="noopener noreferrer">{art.artist}<span aria-hidden="true"> ↗</span></a>:art.artist}</dd></div>}{art.date&&<div><dt>日期</dt><dd>{art.date}</dd></div>}</dl>{art.description&&<p>{art.description}</p>}</div>}
-    </dialog>)}
-  </art-gallery>
-</BaseLayout>
+<GeometricLayout scene="gallery" title="图集 · Bozery" description="Bozery 的自绘与委托 OC 作品。" canonicalPath="/gallery/">
+  <div class="geo-collection-shell">
+    <header class="geo-notes-heading" data-geo-enter>
+      <div><p class="geo-eyebrow">03 / COLOURS & LITTLE WORLDS</p><h1><span class="geo-display-word" lang="en">GALLERY</span><span class="geo-heading-chinese">图集</span></h1><p class="geo-notes-intro">一些关于我的颜色与模样。</p></div>
+      <span class="geo-post-count">{String(gallery.length).padStart(2,'0')}<span>幅作品</span></span>
+    </header>
+    <art-gallery>
+      <div class="geo-gallery-grid" data-geo-enter>{gallery.map((art,i)=><figure id={art.id}>
+        <a class="art-link" href={art.image.src} data-open-art={art.id} aria-label={`查看大图：${art.title}`}>
+          <Image src={art.image} widths={[360,720]} sizes="(max-width:700px) 43vw, 23vw" alt={art.alt} loading={i<4?'eager':'lazy'}/>
+          <span class="enlarge-icon" aria-hidden="true">↗</span>
+        </a>
+        <figcaption><div class="art-title-row"><span class="art-title">{art.title}</span>{art.kindLabel&&<span class="art-kind">{art.kindLabel}</span>}</div>{art.artist&&<p class="art-credit">画师：{art.artistUrl?<a href={art.artistUrl} target="_blank" rel="noopener noreferrer">{art.artist}</a>:art.artist}</p>}</figcaption>
+      </figure>)}</div>
+      {gallery.map(art=><dialog class="art-dialog" data-art-dialog={art.id} aria-labelledby={`geo-title-${art.id}`}>
+        <div class="art-dialog-top"><h2 id={`geo-title-${art.id}`}>{art.title}</h2><button class="dialog-close" type="button" aria-label="关闭大图">×</button></div>
+        <div class="art-dialog-image"><img data-src={art.image.src} alt={art.alt} width={art.image.width} height={art.image.height}/></div>
+        {(art.artist||art.kindLabel||art.date||art.description)&&<div class="art-details"><dl>{art.kindLabel&&<div><dt>类型</dt><dd>{art.kindLabel}</dd></div>}{art.artist&&<div><dt>画师</dt><dd>{art.artistUrl?<a href={art.artistUrl} target="_blank" rel="noopener noreferrer">{art.artist}<span aria-hidden="true"> ↗</span></a>:art.artist}</dd></div>}{art.date&&<div><dt>日期</dt><dd>{art.date}</dd></div>}</dl>{art.description&&<p>{art.description}</p>}</div>}
+      </dialog>)}
+    </art-gallery>
+  </div>
+</GeometricLayout>
 <script>import '../scripts/art-gallery';</script>
