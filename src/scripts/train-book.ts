@@ -4,7 +4,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 /** A hinged cover and one deformable leaf, kept alive with the carriage. */
 export function createTrainBook() {
   const group=new THREE.Group();
-  group.position.set(1.76,1.08,-1.22);group.rotation.y=-.12;
+  group.position.set(1.76,1.071,-1.22);group.rotation.y=-.12;
   const geometries:THREE.BufferGeometry[]=[];
   const materials:THREE.Material[]=[];
   const textures:THREE.Texture[]=[];
@@ -12,31 +12,32 @@ export function createTrainBook() {
   const paper=new THREE.MeshStandardMaterial({color:'#f6eed9',roughness:1});
   const gold=new THREE.MeshStandardMaterial({color:'#bdac75',roughness:.55,metalness:.18});
   materials.push(cover,paper,gold);
-  const width=.45,depth=.64;
+  const width=.45,depth=.64,coverThickness=.006,pageBase=.020,pageArch=.003;
+  const closedCoverY=.048,openCoverY=.001,spineHeight=.027;
   function block(w:number,h:number,d:number,m:THREE.Material,x:number,y:number,z:number,parent=group) {
     const geometry=new RoundedBoxGeometry(w,h,d,2,Math.min(.012,h/4));geometries.push(geometry);
     const mesh=new THREE.Mesh(geometry,m);mesh.position.set(x,y,z);mesh.castShadow=true;mesh.receiveShadow=true;parent.add(mesh);return mesh;
   }
   // Back cover, page edges and narrow spine. The front cover has its own hinge.
-  block(width+.025,.014,depth+.025,cover,width/2,0,0);
-  const spine=block(.032,.08,depth+.014,cover,0,.035,0);
-  const rightStack=block(width-.02,.047,depth-.012,paper,width/2,.035,0);
+  block(width+.025,coverThickness,depth+.025,cover,width/2,0,0);
+  const spine=block(.022,spineHeight,depth+.014,cover,0,0,0);
+  block(width-.02,.013,depth-.012,paper,width/2,.0115,0);
   const leftStack=new THREE.Group();leftStack.name='left-page-stack';
-  block(width-.02,.044,depth-.012,paper,-width/2,.033,0,leftStack);
+  block(width-.02,.013,depth-.012,paper,-width/2,.0115,0,leftStack);
   for(let i=0;i<4;i++) {
-    block(width-.025,.0015,depth-.016,gold,width/2,.014+i*.011,0);
-    block(width-.025,.0015,depth-.016,gold,-width/2,.013+i*.011,0,leftStack);
+    block(width-.025,.0006,depth-.016,gold,width/2,.006+i*.003,0);
+    block(width-.025,.0006,depth-.016,gold,-width/2,.006+i*.003,0,leftStack);
   }
   const hinge=new THREE.Group();hinge.name='front-cover-hinge';group.add(hinge);
-  const frontCover=block(width+.025,.014,depth+.025,cover,width/2,0,0,hinge);frontCover.name='front-cover';
+  const frontCover=block(width+.025,coverThickness,depth+.025,cover,width/2,0,0,hinge);frontCover.name='front-cover';
   // The left pages sit inside the cover and follow its hinge throughout opening.
   // Their final, negative-x layout is rotated onto the right while the book is shut.
-  leftStack.rotation.z=Math.PI;leftStack.position.y=.003;hinge.add(leftStack);
-  block(.22,.001,.004,gold,.235,.009,-.10,hinge);
-  block(.12,.001,.004,gold,.235,.009,-.065,hinge);
-  block(.007,.001,depth-.07,gold,.38,.009,0,hinge);
+  leftStack.rotation.z=Math.PI;leftStack.position.y=openCoverY;hinge.add(leftStack);
+  block(.22,.0006,.004,gold,.235,.0038,-.10,hinge);
+  block(.12,.0006,.004,gold,.235,.0038,-.065,hinge);
+  block(.007,.0006,depth-.07,gold,.38,.0038,0,hinge);
   // A ribbon remains laid across the lower page edge.
-  block(.018,.003,.24,cover,.09,.072,.26);
+  block(.018,.0012,.24,cover,.09,pageBase+pageArch+.001,.26);
 
   function pageTexture(index:number) {
     const canvas=document.createElement('canvas');canvas.width=384;canvas.height=544;
@@ -65,7 +66,7 @@ export function createTrainBook() {
     const a=geometry.getAttribute('position');const uv=geometry.getAttribute('uv');
     for(let i=0;i<a.count;i++) {
       const u=uv.getX(i);const v=uv.getY(i);
-      a.setXYZ(i,side*(.008+u*(width-.017)),.062+Math.sin(u*Math.PI)*.015,(.5-v)*(depth-.022));
+      a.setXYZ(i,side*(.008+u*(width-.017)),pageBase+Math.sin(u*Math.PI)*pageArch,(.5-v)*(depth-.022));
       if(side<0)uv.setX(i,1-u);
     }
     geometry.computeVertexNormals();geometries.push(geometry);return geometry;
@@ -95,9 +96,9 @@ export function createTrainBook() {
     if(openAt!==undefined)openness=reduced?1:ease((time-openAt)/1.9);
     // Allow thickness for both page stacks when shut. Lower the hinge only after
     // the cover has cleared the right pages, rather than cutting through them.
-    hinge.position.y=THREE.MathUtils.lerp(.16,.003,ease((openness-.5)*2));hinge.rotation.z=openness*Math.PI;
-    spine.scale.y=THREE.MathUtils.lerp(2,1,openness);spine.position.y=.04*spine.scale.y-.005;
-    rightStack.scale.y=1-openness*.12;
+    hinge.position.y=THREE.MathUtils.lerp(closedCoverY,openCoverY,ease((openness-.5)*2));hinge.rotation.z=openness*Math.PI;
+    spine.scale.y=THREE.MathUtils.lerp(closedCoverY+coverThickness,spineHeight,openness)/spineHeight;
+    spine.position.y=spineHeight*spine.scale.y/2-coverThickness/2;
     if(reduced){leaf.visible=false;turnAt=undefined;progress=0;nextTurn=time+10;resetVisiblePages();return wasOpen!==openness||wasTurning;}
     if(reading&&openness===1&&turnAt===undefined&&time>=nextTurn) {
       turnAt=time;leaf.visible=true;
@@ -111,7 +112,7 @@ export function createTrainBook() {
         const u=uv.getX(i),v=uv.getY(i),radius=.008+u*(width-.017);
         const bend=Math.sin(p*Math.PI)*(.46*u+.13*Math.sin(v*Math.PI));
         const angle=p*Math.PI+bend;
-        a.setXYZ(i,Math.cos(angle)*radius,.075+Math.sin(angle)*radius+.014*Math.sin(u*Math.PI),(.5-v)*(depth-.022));
+        a.setXYZ(i,Math.cos(angle)*radius,pageBase+.001+Math.sin(angle)*radius+pageArch*Math.sin(u*Math.PI),(.5-v)*(depth-.022));
       }
       a.needsUpdate=true;turnGeometry.computeVertexNormals();
       if(progress===1){turnedPages++;turnAt=undefined;leaf.visible=false;progress=0;nextTurn=time+8.5;resetVisiblePages();}
