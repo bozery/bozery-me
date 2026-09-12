@@ -1,0 +1,63 @@
+---
+import { ClientRouter } from 'astro:transitions';
+import GeometricBackground from '../components/GeometricBackground.astro';
+import '../styles/geometric.css';
+import type { TrainView } from '../scripts/train-world';
+
+interface Props {
+  scene?: TrainView;
+  title?: string;
+  description?: string;
+  canonicalPath?: string;
+}
+const {
+  scene = 'home',
+  title = 'Bozery · 云上慢行',
+  description = 'Bozery 的个人网站：随笔、图集与个人介绍。',
+  canonicalPath = '/',
+} = Astro.props;
+const links = [
+  { href: '/concept/', label: '主页', number: '01', active: scene === 'home' },
+  { href: '/concept/notes/', label: '随笔', number: '02', active: scene === 'notes' || scene === 'article' },
+  { href: '/concept/gallery/', label: '图集', number: '03', active: scene === 'gallery' },
+  { href: '/concept/about/', label: '关于', number: '04', active: scene === 'about' },
+];
+---
+<!doctype html>
+<html lang="zh-CN" class="geometric-document" transition:animate="none">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f6f8f4" />
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="description" content={description} />
+    <link rel="canonical" href={new URL(canonicalPath, Astro.site)} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preload" href="/fonts/barlow-condensed-extrabold.ttf" as="font" type="font/ttf" crossorigin />
+    <title>{title}</title>
+    <ClientRouter fallback="swap" />
+  </head>
+  <body class="geometric-site" data-geo-scene={scene}>
+    <a class="geo-skip" href="#geo-main">跳至正文</a>
+    <GeometricBackground scene={scene} />
+    <header class="geo-header" transition:persist="geo-header" transition:animate="none">
+      <a class="geo-brand" href="/concept/" aria-label="Bozery 主页">
+        <svg viewBox="0 0 36 32" aria-hidden="true"><path d="M15 2H34L23 15H4Z" fill="currentColor"/><path d="M13 18H32L21 31H2Z" fill="currentColor" opacity=".36"/></svg>
+        <span>BOZERY<span class="geo-brand-dot">.</span></span>
+      </a>
+      <nav class="geo-nav" aria-label="主导航">
+        <span class="geo-nav-line" aria-hidden="true"></span>
+        {links.map(link => <a href={link.href} data-geo-nav aria-current={link.active ? 'page' : undefined}>
+          <span class="geo-nav-number" aria-hidden="true">{link.number}</span>{link.label}
+        </a>)}
+      </nav>
+    </header>
+    <main id="geo-main" class:list={['geo-main', `geo-main-${scene}`]} tabindex="-1" transition:animate="none">
+      <slot />
+    </main>
+    <footer class="geo-footer" transition:persist="geo-footer" transition:animate="none">
+      <span class="geo-footer-note"><span class="geo-tiny-slash" aria-hidden="true"></span> FREE TO WANDER</span>
+    </footer>
+    <script>import '../scripts/geometric-scene';</script>
+  </body>
+</html>

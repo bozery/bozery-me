@@ -1,0 +1,24 @@
+---
+import { type CollectionEntry, getCollection, render } from 'astro:content';
+import { Image } from 'astro:assets';
+import GeometricLayout from '../../../layouts/GeometricLayout.astro';
+import FormattedDate from '../../../components/FormattedDate.astro';
+export async function getStaticPaths() {
+  return (await getCollection('blog')).map(post => ({ params: { slug: post.id }, props: { post } }));
+}
+interface Props { post: CollectionEntry<'blog'>; }
+const { post } = Astro.props;
+const { Content } = await render(post);
+---
+<GeometricLayout scene="article" title={`${post.data.title} · Bozery`} description={post.data.description} canonicalPath={`/blog/${post.id}/`}>
+  <article class="geo-article" data-geo-enter>
+    <a class="geo-back" href="/concept/notes/"><span aria-hidden="true">↖</span> 所有随笔</a>
+    <header class="geo-article-heading">
+      <p class="geo-article-meta"><FormattedDate date={post.data.pubDate} /><span>{post.data.category}</span></p>
+      <h1>{post.data.title}</h1>
+    </header>
+    {post.data.heroImage && <Image class="geo-article-cover" src={post.data.heroImage} width={1000} alt={post.data.heroImageAlt ?? ''} />}
+    <div class="geo-prose"><Content /></div>
+    <footer class="geo-article-footer"><span>写于 <FormattedDate date={post.data.pubDate} /></span><a href="/concept/notes/">回到随笔 <span aria-hidden="true">↗</span></a></footer>
+  </article>
+</GeometricLayout>

@@ -1,0 +1,17 @@
+---
+import { getImage } from 'astro:assets';
+import { gallery } from '../data/gallery';
+import type { TrainView } from '../scripts/train-world';
+interface Props { scene: TrainView; }
+const { scene } = Astro.props;
+const wallArt = await Promise.all(['oc-02','oc-09','oc-11'].map(async id => {
+  const art=gallery.find(item=>item.id===id)!;
+  const image=await getImage({src:art.image,width:512,format:'webp',quality:85});
+  return {src:image.src,ratio:art.image.width/art.image.height};
+}));
+---
+<div class="geo-backdrop" data-geo-background data-view={scene} data-wall-art={JSON.stringify(wallArt)} aria-hidden="true" transition:persist="geo-background" transition:animate="none">
+  <div class="train-fallback"></div>
+  <canvas class="train-canvas"></canvas>
+  <div class="train-reading-light"></div>
+</div>

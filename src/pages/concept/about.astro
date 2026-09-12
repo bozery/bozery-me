@@ -1,0 +1,38 @@
+---
+import GeometricLayout from '../../layouts/GeometricLayout.astro';
+import XIcon from '../../assets/icons/x.svg';
+import QQIcon from '../../assets/icons/qq.svg';
+import { profile } from '../../data/profile';
+import { publicUrl } from '../../data/links';
+const paragraphs=profile.paragraphs.map(p=>p==='很高兴见到你，在我海岸的一隅。'?'很高兴在这一程遇见你。':p);
+---
+<GeometricLayout scene="about" title="关于 · Bozery" description={paragraphs.join(' ')} canonicalPath="/about/">
+  <section class="geo-about-shell" data-geo-enter aria-labelledby="geo-about-title">
+    <header class="geo-notes-heading"><div><p class="geo-eyebrow">04 / A LITTLE ABOUT ME</p><h1 id="geo-about-title"><span class="geo-display-word" lang="en">ABOUT</span><span class="geo-heading-chinese">关于</span></h1></div></header>
+    <h2 class="geo-about-tagline">{profile.aboutTitle}</h2>
+    <div class="geo-about-text">{paragraphs.filter(p=>p.trim()).map(p=><p>{p}</p>)}</div>
+    {profile.contacts.length>0&&<contact-links class="geo-contact-links" aria-label="联系方式">
+      <h2>{profile.contactHeading}</h2>
+      <div class="geo-contact-list">{profile.contacts.map(contact=>{
+        const url=publicUrl(contact.url,true);
+        const content=<><span class="geo-contact-icon" aria-hidden="true">{contact.icon==='x'?<XIcon/>:contact.icon==='qq'?<QQIcon/>:<span>↗</span>}</span><span><span class="geo-contact-label">{contact.label}</span><span class="geo-contact-value">{contact.value}</span></span><span class="geo-contact-action" aria-hidden="true">{url?'↗':'复制'}</span></>;
+        return url?<a href={url} target={url.startsWith('http')?'_blank':undefined} rel={url.startsWith('http')?'noopener noreferrer':undefined}>{content}</a>:<button type="button" data-copy={contact.value} data-platform={contact.label} aria-label={`复制 ${contact.label}：${contact.value}`}>{content}</button>;
+      })}</div>
+      <p class="contact-status" role="status" aria-live="polite"></p>
+    </contact-links>}
+    <a class="geo-about-next" href="/concept/gallery/">也可以翻翻我的图集 <span aria-hidden="true">↗</span></a>
+  </section>
+</GeometricLayout>
+<script>
+  class JourneyContacts extends HTMLElement {
+    connectedCallback(){
+      if(this.dataset.ready)return;this.dataset.ready='true';
+      const status=this.querySelector<HTMLElement>('.contact-status')!;
+      this.querySelectorAll<HTMLButtonElement>('[data-copy]').forEach(button=>button.addEventListener('click',async()=>{
+        const value=button.dataset.copy??'';status.textContent=`${button.dataset.platform}：${value}`;
+        try{await navigator.clipboard.writeText(value);if(this.isConnected)status.textContent=`${button.dataset.platform}：${value} · 已复制`;}catch{/* The visible account remains selectable when copying is unavailable. */}
+      }));
+    }
+  }
+  if(!customElements.get('contact-links'))customElements.define('contact-links',JourneyContacts);
+</script>

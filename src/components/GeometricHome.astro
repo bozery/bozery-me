@@ -1,0 +1,40 @@
+---
+import { getImage } from 'astro:assets';
+import referenceSheet from '../assets/home/bozery-reference-sheet.png';
+import GeometricLayout from '../layouts/GeometricLayout.astro';
+const portrait = await getImage({ src: referenceSheet, width: 2048, format: 'webp', quality: 90 });
+let revealAt = 650;
+const greetings = ['你好，我是 Bozery。', '很高兴在这一程遇见你。'].map(text => ({
+  text,
+  characters: Array.from(text).map(character => {
+    const delay = revealAt;
+    const hold = /[。！？]/.test(character) ? 1000 : /[，、]/.test(character) ? 380 : 155;
+    revealAt += hold;
+    return { character, delay, hold };
+  }),
+}));
+---
+<GeometricLayout>
+  <section class="geo-poster" aria-labelledby="geo-home-title">
+    <div class="geo-home-copy" data-geo-enter>
+      <div class="geo-home-identity">
+        <svg class="geo-home-avatar" viewBox="1150 16 296 274" role="img" aria-labelledby="geo-avatar-title">
+          <title id="geo-avatar-title">Bozery 的青色狼头像，取自原设定图中的斜侧脸视图。</title>
+          <image href={portrait.src} width="2048" height="715" />
+        </svg>
+        <p class="geo-eyebrow geo-greeting">
+          <span class="geo-sr-only">{greetings.map(line => line.text).join('')}</span>
+          {greetings.map((line, index) => <span class:list={['geo-type-line', { 'geo-identity-sub': index > 0 }]} aria-hidden="true">
+            {line.characters.map(({ character, delay, hold }) => <span class="geo-type-char" style={`--type-delay:${delay}ms;--type-hold:${hold}ms`}>{character}</span>)}
+          </span>)}
+        </p>
+      </div>
+      <h1 id="geo-home-title">BOZERY<span class="geo-title-stop" aria-hidden="true">.</span></h1>
+      <p class="geo-home-tagline">狼仍在他的旅途中。</p>
+    </div>
+    <a class="geo-home-link" href="/concept/notes/" data-geo-enter>
+      <span><span class="geo-link-kicker">NOTES ALONG THE WAY</span><span class="geo-link-title">翻开随笔</span></span>
+      <span class="geo-link-arrow" aria-hidden="true">↗</span>
+    </a>
+  </section>
+</GeometricLayout>

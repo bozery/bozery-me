@@ -1,0 +1,190 @@
+---
+import { Image } from 'astro:assets';
+import character from '../assets/home/bozery-cutout.png';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { profile } from '../data/profile';
+interface Props { coastalPreview?: boolean; }
+const { coastalPreview = false } = Astro.props;
+---
+<BaseLayout scene="home" coastalPreview={coastalPreview}>
+  <div class="home-stage">
+    <div class="home-copy">
+      <h1>Bozery<span>.</span></h1>
+      {profile.homeTagline && <p class="home-tagline">{profile.homeTagline}</p>}
+      <span class="home-rule" aria-hidden="true"></span>
+    </div>
+    <div class="character-space">
+      <div class="character-halo" aria-hidden="true"></div>
+      <div class="character-shadow" aria-hidden="true"></div>
+      <div class="character-float">
+        <Image
+          class="character-image"
+          src={character}
+          width={1040}
+          widths={[320, 480, 720, 1040]}
+          sizes="(max-width:700px) min(82vw, 340px, 36svh), (max-width:1050px) 35vw, min(38vw, 520px, 60svh)"
+          format="webp"
+          quality={90}
+          alt="Bozery 的 Q 版插画：青蓝色小狼，金色眼睛，身后翘着蓬松的大尾巴"
+          loading="eager"
+          fetchpriority="high"
+          draggable="false"
+        />
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  :global(.page.page-home) {
+    margin-left: max(200px, 16vw);
+    margin-right: clamp(36px, 6vw, 120px);
+    padding: 0;
+  }
+
+  .home-stage {
+    display: grid;
+    grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr);
+    align-items: center;
+    gap: clamp(24px, 4vw, 80px);
+    max-width: 1240px;
+    min-height: 100svh;
+    margin-inline: auto;
+    padding-block: 108px 120px;
+  }
+
+  .home-copy {
+    position: relative;
+    z-index: 1;
+    min-width: 0;
+    padding-bottom: 12px;
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: clamp(5rem, 9.2vw, 9.5rem);
+    font-weight: 400;
+    letter-spacing: -.035em;
+    line-height: 1.1;
+    color: #f3faf8;
+    text-shadow: 0 6px 60px #76c6d014;
+  }
+
+  h1 span { color: var(--cyan); }
+
+  .home-tagline {
+    margin-top: 24px;
+    font-family: var(--font-hand);
+    font-size: clamp(1.2rem, 1.85vw, 1.75rem);
+    letter-spacing: .2em;
+    line-height: 1.8;
+    color: #c1dce0;
+    text-wrap: balance;
+  }
+
+  .home-rule {
+    display: block;
+    width: 76px;
+    height: 1px;
+    margin-top: 34px;
+    background: linear-gradient(90deg, #9ddad780, #9ddad700);
+  }
+
+  .character-space {
+    position: relative;
+    justify-self: center;
+    width: min(100%, 520px, 60svh);
+    aspect-ratio: 1;
+    isolation: isolate;
+  }
+
+  .character-halo {
+    position: absolute;
+    z-index: -1;
+    inset: 4% -16% -8%;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at 54% 46%, #78dcd320, #409ca70c 42%, transparent 70%);
+    filter: blur(24px);
+    pointer-events: none;
+  }
+
+  .character-shadow {
+    position: absolute;
+    z-index: -1;
+    left: 23%;
+    right: 13%;
+    bottom: -2%;
+    height: 7%;
+    border-radius: 50%;
+    background: #010b1490;
+    filter: blur(16px);
+    pointer-events: none;
+  }
+
+  .character-float {
+    animation: coastal-float 10s ease-in-out infinite;
+    transform-origin: 50% 65%;
+  }
+
+  .character-image {
+    width: 100%;
+    height: auto;
+    filter: drop-shadow(0 18px 24px #010b1459);
+    user-select: none;
+  }
+
+  @keyframes coastal-float {
+    0%, 100% { transform: translateY(3px) rotate(-1.5deg); }
+    50% { transform: translateY(-7px) rotate(.25deg); }
+  }
+
+  :global(body[data-paused=true]) .character-float { animation-play-state: paused; }
+
+  @media (max-width: 1050px) {
+    :global(.page.page-home) { margin-left: 165px; margin-right: 36px; }
+    .home-stage { gap: 24px; }
+    h1 { font-size: clamp(3.7rem, 8.8vw, 6rem); }
+    .home-tagline { font-size: 1.2rem; letter-spacing: .14em; }
+  }
+
+  @media (min-width: 701px) and (max-height: 650px) {
+    .home-stage { padding-block: 64px 80px; }
+    h1 { font-size: clamp(3.7rem, 8vw, 7rem); }
+    .home-tagline { margin-top: 16px; }
+    .home-rule { margin-top: 24px; }
+  }
+
+  @media (max-width: 700px) {
+    :global(.page.page-home) { margin: 0; padding-inline: 30px; }
+    .home-stage {
+      grid-template-columns: minmax(0, 1fr);
+      align-content: center;
+      gap: 24px;
+      padding-block: 110px calc(122px + env(safe-area-inset-bottom));
+    }
+    .home-copy { width: 100%; padding: 0 4px; }
+    h1 { font-size: clamp(4rem, 19vw, 6rem); letter-spacing: -.025em; }
+    .home-tagline { margin-top: 14px; font-size: 1.25rem; letter-spacing: .18em; }
+    .home-rule { width: 54px; margin-top: 22px; }
+    .character-space { width: min(82vw, 340px, 36svh); max-width: 100%; }
+    .character-halo { inset: 8% -8% 0; }
+    .character-shadow { bottom: 0; filter: blur(12px); }
+  }
+
+  @media (max-width: 700px) and (max-height: 650px) {
+    .home-stage { gap: 14px; padding-block: 92px calc(108px + env(safe-area-inset-bottom)); }
+    h1 { font-size: clamp(3.4rem, 17vw, 4.2rem); }
+    .home-tagline { margin-top: 8px; font-size: 1.1rem; }
+    .home-rule { margin-top: 16px; }
+    .character-space { width: min(74vw, 220px, 32svh); }
+  }
+
+  @media (max-width: 370px) {
+    :global(.page.page-home) { padding-inline: 24px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .character-float { animation: none; }
+  }
+</style>
