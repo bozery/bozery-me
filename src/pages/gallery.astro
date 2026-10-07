@@ -1,14 +1,12 @@
 ---
 import { Image } from 'astro:assets';
 import GeometricLayout from '../layouts/GeometricLayout.astro';
+import PageHeading from '../components/PageHeading.astro';
 import { gallery } from '../data/gallery';
 ---
 <GeometricLayout scene="gallery" title="图集 · Bozery" description="Bozery 的自绘与委托 OC 作品。" canonicalPath="/gallery/">
   <div class="geo-collection-shell">
-    <header class="geo-notes-heading" data-geo-enter>
-      <div><p class="geo-eyebrow">03 / COLOURS & LITTLE WORLDS</p><h1><span class="geo-display-word" lang="en">GALLERY</span><span class="geo-heading-chinese">图集</span></h1><p class="geo-notes-intro">一些关于我的颜色与模样。</p></div>
-      <span class="geo-post-count">{String(gallery.length).padStart(2,'0')}<span>幅作品</span></span>
-    </header>
+    <div data-geo-enter><PageHeading title="图集" /></div>
     <art-gallery>
       <div class="geo-gallery-grid" data-geo-enter>{gallery.map((art,i)=><figure id={art.id}>
         <a class="art-link" href={art.image.src} data-open-art={art.id} aria-label={`查看大图：${art.title}`}>

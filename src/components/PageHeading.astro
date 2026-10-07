@@ -1,0 +1,8 @@
+---
+interface Props { title: string; id?: string; }
+const { title, id } = Astro.props;
+---
+<header class="geo-page-heading">
+  <h1 id={id}>{title}</h1>
+  <slot />
+</header>

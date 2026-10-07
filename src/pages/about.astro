@@ -1,15 +1,15 @@
 ---
 import GeometricLayout from '../layouts/GeometricLayout.astro';
+import PageHeading from '../components/PageHeading.astro';
 import XIcon from '../assets/icons/x.svg';
 import QQIcon from '../assets/icons/qq.svg';
 import { profile } from '../data/profile';
 import { publicUrl } from '../data/links';
-const paragraphs=profile.paragraphs.map(p=>p==='很高兴见到你，在我海岸的一隅。'?'很高兴在这一程遇见你。':p);
+const paragraphs=profile.paragraphs;
 ---
 <GeometricLayout scene="about" title="关于 · Bozery" description={paragraphs.join(' ')} canonicalPath="/about/">
   <section class="geo-about-shell" data-geo-enter aria-labelledby="geo-about-title">
-    <header class="geo-notes-heading"><div><p class="geo-eyebrow">04 / A LITTLE ABOUT ME</p><h1 id="geo-about-title"><span class="geo-display-word" lang="en">ABOUT</span><span class="geo-heading-chinese">关于</span></h1></div></header>
-    <h2 class="geo-about-tagline">{profile.aboutTitle}</h2>
+    <PageHeading title="关于" id="geo-about-title"><p class="geo-page-lead">{profile.aboutTitle}</p></PageHeading>
     <div class="geo-about-text">{paragraphs.filter(p=>p.trim()).map(p=><p>{p}</p>)}</div>
     {profile.contacts.length>0&&<contact-links class="geo-contact-links" aria-label="联系方式">
       <h2>{profile.contactHeading}</h2>
@@ -20,7 +20,6 @@ const paragraphs=profile.paragraphs.map(p=>p==='很高兴见到你，在我海�
       })}</div>
       <p class="contact-status" role="status" aria-live="polite"></p>
     </contact-links>}
-    <a class="geo-about-next" href="/gallery/">也可以翻翻我的图集 <span aria-hidden="true">↗</span></a>
   </section>
 </GeometricLayout>
 <script>

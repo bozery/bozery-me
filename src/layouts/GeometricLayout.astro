@@ -28,10 +28,10 @@ const {
 const canonicalURL = new URL(canonicalPath, Astro.site);
 const imageURL = new URL(image.src, Astro.site);
 const links = [
-  { href: '/', label: '主页', number: '01', active: scene === 'home' },
-  { href: '/blog/', label: '随笔', number: '02', active: scene === 'notes' || scene === 'article' },
-  { href: '/gallery/', label: '图集', number: '03', active: scene === 'gallery' },
-  { href: '/about/', label: '关于', number: '04', active: scene === 'about' },
+  { href: '/', label: '主页', active: scene === 'home' },
+  { href: '/blog/', label: '随笔', active: scene === 'notes' || scene === 'article' },
+  { href: '/gallery/', label: '图集', active: scene === 'gallery' },
+  { href: '/about/', label: '关于', active: scene === 'about' },
 ];
 ---
 <!doctype html>
@@ -74,16 +74,13 @@ const links = [
       <nav class="geo-nav" aria-label="主导航">
         <span class="geo-nav-line" aria-hidden="true"></span>
         {links.map(link => <a href={link.href} data-geo-nav aria-current={link.active ? 'page' : undefined}>
-          <span class="geo-nav-number" aria-hidden="true">{link.number}</span>{link.label}
+          {link.label}
         </a>)}
       </nav>
     </header>
     <main id="geo-main" class:list={['geo-main', `geo-main-${scene}`]} tabindex="-1" transition:animate="none">
       <slot />
     </main>
-    <footer class="geo-footer" transition:persist="geo-footer" transition:animate="none">
-      <span class="geo-footer-note"><span class="geo-tiny-slash" aria-hidden="true"></span> FREE TO WANDER</span>
-    </footer>
     <script>import '../scripts/geometric-scene';</script>
   </body>
 </html>
