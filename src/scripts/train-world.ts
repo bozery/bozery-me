@@ -5,6 +5,8 @@ import { createTrainBook } from './train-book';
 import { mountainGeometry, cumulusGeometry, leafGeometry, contactShadowTexture, contactShadows, verticalGradient, curtainGeometry } from './train-detail';
 import { createKit } from './train-kit';
 import { createCameraRig } from './train-camera';
+import { createTrainCat } from './train-cat';
+import { companion } from '../data/companion';
 import { buildBench } from './train-seat';
 import { floorTexture, runnerTexture, woodTexture, wallTexture } from './train-textures';
 
@@ -228,6 +230,9 @@ export function createTrainWorld(host: HTMLElement) {
     ...[-5.4,-1.2,3.0,7.4].map(z=>({x:1.85,z,w:1.1,d:.95})),
   ],-.004,shadowTexture);
   geometries.push(floorShadows.geometry);materials.push(floorShadows.material);carriage.add(floorShadows);
+  // A cat naps on the rear table; it belongs to the About page's thank-you note.
+  const cat=createTrainCat(companion.colors);
+  cat.group.position.set(1.62,1.068,7.45);cat.group.rotation.y=Math.PI-.4;cat.group.scale.setScalar(1.25);scene.add(cat.group);
   // Both ends are closed, including the rear visible from the about camera.
   for(const [z,facing] of [[front,0],[rear,Math.PI]]){
     const end=new THREE.Group();end.position.z=z;end.rotation.y=facing;carriage.add(end);
@@ -372,7 +377,7 @@ export function createTrainWorld(host: HTMLElement) {
       case 'home':return {position:new THREE.Vector3(mobile?-1.1:-1.9,mobile?1.95:1.9,mobile?4.4:5.25),look:new THREE.Vector3(2.6,mobile?1.75:1.65,-1.8)};
       case 'notes':case 'article':return {position:new THREE.Vector3(1.15,3.3,-.15),look:new THREE.Vector3(mobile?1.65:1.05,1.03,-1.4)};
       case 'gallery':return {position:new THREE.Vector3(.9,2.0,.8),look:new THREE.Vector3(-2.3,1.92,mobile?-3.3:-1.1)};
-      case 'about':return {position:new THREE.Vector3(-.9,1.86,4.65),look:new THREE.Vector3(2.45,1.53,mobile?7.6:6.6)};
+      case 'about':return {position:new THREE.Vector3(-.9,1.86,4.65),look:new THREE.Vector3(2.45,mobile?1.95:1.53,mobile?7.6:6.6)};
     }
   }
   // Opening shot: start a little behind and above the framing, then glide in.
@@ -387,9 +392,30 @@ export function createTrainWorld(host: HTMLElement) {
     const dest=framing(next);
     if(instant)rig.retarget(dest.position,dest.look);else rig.travel(dest.position,dest.look,elapsed);
     book.setReading(next==='notes'||next==='article',elapsed);
+    if(next!=='about'){setHover(false);clearTimeout(sleepTimer);cat.setAwake(false);}
     if(next==='gallery')loadWallArt();
     if(reduced.matches)render(0);
   }
+  // The canvas ignores pointer events, so hover and clicks on the cat are hit-tested from the window.
+  const raycaster=new THREE.Raycaster(),pointerNdc=new THREE.Vector2();
+  let hovering=false,sleepTimer:ReturnType<typeof setTimeout>|undefined;
+  const blocked=(target:EventTarget|null)=>target instanceof Element&&!!target.closest('a,button,input,textarea,select,dialog,[data-companion-card]');
+  function catUnder(event:PointerEvent|MouseEvent){
+    if(view!=='about'||blocked(event.target))return false;
+    pointerNdc.set(event.clientX/innerWidth*2-1,-(event.clientY/innerHeight)*2+1);
+    raycaster.setFromCamera(pointerNdc,camera);return cat.hit(raycaster);
+  }
+  function setHover(next:boolean){if(next===hovering)return;hovering=next;document.documentElement.classList.toggle('companion-hover',next);if(next)cat.twitch(elapsed);}
+  function wakeCompanion(open=true){
+    clearTimeout(sleepTimer);
+    if(open){cat.setAwake(true);dispatchEvent(new CustomEvent('bozery:companion',{detail:{open:true}}));}
+    else sleepTimer=setTimeout(()=>cat.setAwake(false),1600);
+    if(reduced.matches)render(0);
+  }
+  const onPointerMove=(event:PointerEvent)=>{if(event.pointerType==='mouse')setHover(catUnder(event));};
+  const onClick=(event:MouseEvent)=>{if(catUnder(event))wakeCompanion(true);};
+  const onCardClosed=()=>wakeCompanion(false);
+  addEventListener('pointermove',onPointerMove,{passive:true});addEventListener('click',onClick);addEventListener('bozery:companion-closed',onCardClosed);
   function sizeCanvas() {
     const w=innerWidth,h=innerHeight;
     // Bound the 3D pixel cost on high-DPI and large screens. DOM text stays native.
@@ -405,6 +431,7 @@ export function createTrainWorld(host: HTMLElement) {
   function render(dt:number) {
     elapsed+=dt;
     rig.update(elapsed,dt);
+    cat.update(elapsed,dt,reduced.matches);
     if(book.update(elapsed,reduced.matches))renderer.shadowMap.needsUpdate=true;
     cloudUniforms.time.value=elapsed;
     for(let i=0;i<masts.length;i++)masts[i].position.z=((i*22+elapsed*2.3)%154)-120;
@@ -445,12 +472,15 @@ export function createTrainWorld(host: HTMLElement) {
   resize();resume();
   return {
     moveTo,
+    wakeCompanion,
     // Read-only snapshots also make continuity and camera motion inspectable.
     snapshot:()=>({view,elapsed,...rig.state(),moving:rig.moving,book:book.snapshot(),artLoaded,drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles,qualityScale,pixelRatio:renderer.getPixelRatio(),shadowUpdates}),
     dispose(){
       disposed=true;cancelAnimationFrame(frame);removeEventListener('resize',resize);document.removeEventListener('visibilitychange',visibility);reduced.removeEventListener('change',motion);
       canvas.removeEventListener('webglcontextlost',contextLost);canvas.removeEventListener('webglcontextrestored',contextRestored);
-      geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());environment.dispose();rig.dispose();renderer.dispose();
+      geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());environment.dispose();rig.dispose();cat.dispose();
+      removeEventListener('pointermove',onPointerMove);removeEventListener('click',onClick);removeEventListener('bozery:companion-closed',onCardClosed);clearTimeout(sleepTimer);
+      renderer.dispose();
       puffs.dispose();
       book.dispose();
     }

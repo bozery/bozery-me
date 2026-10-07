@@ -1,6 +1,7 @@
 ---
 import GeometricLayout from '../layouts/GeometricLayout.astro';
 import PageHeading from '../components/PageHeading.astro';
+import CompanionNote from '../components/CompanionNote.astro';
 import XIcon from '../assets/icons/x.svg';
 import QQIcon from '../assets/icons/qq.svg';
 import { profile } from '../data/profile';
@@ -21,6 +22,7 @@ const paragraphs=profile.paragraphs;
       <p class="contact-status" role="status" aria-live="polite"></p>
     </contact-links>}
   </section>
+  <CompanionNote />
 </GeometricLayout>
 <script>
   class JourneyContacts extends HTMLElement {
