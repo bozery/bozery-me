@@ -37,7 +37,8 @@ const earSdf: Sdf = (x, y, z) => smax(earOuter(x, y, z), -earInner(x, y, z), .00
  * aqp, a small stuffed-toy grey cat curled up asleep. It breathes while asleep, twitches its
  * ears and tail when hovered and lifts its head when woken.
  */
-export function createTrainCat(colors: Companion['colors']) {
+/** `tailSide` picks which flank the tail curls round: 1 for local +z, -1 for -z. */
+export function createTrainCat(colors: Companion['colors'], { tailSide = 1 } = {}) {
   const group = new THREE.Group(); group.name = 'companion-cat';
   const geometries: THREE.BufferGeometry[] = [], materials: THREE.Material[] = [];
   const fur = new THREE.Color(colors.fur), back = new THREE.Color(colors.stripes), light = new THREE.Color(colors.belly), pink = new THREE.Color(colors.accent);
@@ -152,7 +153,7 @@ export function createTrainCat(colors: Companion['colors']) {
     tail.shape((t, out) => {
       const a = Math.PI * 1.1 - t * Math.PI * .88, reach = (.72 + .28 * smooth(t, 0, .22)) * (1 + swish * t * t);
       const rad = .023 * (1 - .3 * t);
-      out.set(-.01 + Math.cos(a) * .2 * reach, rad + .045 * (1 - smooth(t, 0, .28)) + lift * t * t * t, Math.sin(a) * .15 * reach);
+      out.set(-.01 + Math.cos(a) * .2 * reach, rad + .045 * (1 - smooth(t, 0, .28)) + lift * t * t * t, tailSide * Math.sin(a) * .15 * reach);
     });
   }
   shapeTail(0, 0);

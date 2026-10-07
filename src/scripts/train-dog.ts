@@ -31,7 +31,8 @@ const earSdf: Sdf = (x, y, z) => smin(ellipsoid(0, -.055, 0, .042, .07, .015)(x,
  * A stuffed-toy beagle lying beside the cat. It watches the viewer, glances at
  * the cat now and then, and cheers up (wagging, ears flapping) when clicked.
  */
-export function createTrainDog(colors: Buddy['colors']) {
+/** `lean` tilts the head toward local +z (positive) or -z (negative), e.g. onto a neighbour. */
+export function createTrainDog(colors: Buddy['colors'], { lean = 0 } = {}) {
   const group = new THREE.Group(); group.name = 'companion-dog';
   const geometries: THREE.BufferGeometry[] = [], materials: THREE.Material[] = [];
   const tan = new THREE.Color(colors.tan), saddle = new THREE.Color(colors.saddle), white = new THREE.Color(colors.white), earColor = new THREE.Color(colors.ear);
@@ -154,7 +155,9 @@ export function createTrainDog(colors: Buddy['colors']) {
       body.scale.set(1, 1 + breathe * .02, 1 + breathe * .01);
       const bounce = still ? 0 : Math.abs(Math.sin(time * 6)) * .006 * cheer;
       head.position.y = .175 + breathe * .002 + bounce;
-      const tilt = still ? cheer * .2 : (Math.sin(time * .7) * .06 + cheer * .22);
+      // Leaning on its neighbour; cheering straightens it up a little and adds a happy wobble.
+      const tilt = lean * (1 - cheer * .4) + (still ? 0 : Math.sin(time * .7) * .04 + Math.sin(time * 5) * .08 * cheer);
+      head.position.z = lean * .08 * (1 - cheer * .4);
       head.rotation.set(tilt, yaw, pitch);
       ears.forEach((ear, i) => {
         const side = i ? 1 : -1, flap = still ? 0 : Math.sin(time * 9) * .25 * cheer;

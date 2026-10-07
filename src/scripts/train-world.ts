@@ -232,11 +232,11 @@ export function createTrainWorld(host: HTMLElement) {
   ],-.004,shadowTexture);
   geometries.push(floorShadows.geometry);materials.push(floorShadows.material);carriage.add(floorShadows);
   // A cat naps on the rear table; it belongs to the About page's thank-you note.
-  const cat=createTrainCat(companion.colors);
+  const cat=createTrainCat(companion.colors,{tailSide:-1});
   cat.group.position.set(1.62,1.068,7.45);cat.group.rotation.y=Math.PI-.4;cat.group.scale.setScalar(1.25);scene.add(cat.group);
-  // Its stuffed beagle friend lies beside it, a little further along the table.
-  const dog=createTrainDog(buddy.colors);
-  dog.group.position.set(1.84,1.068,7.12);dog.group.rotation.y=Math.PI-.62;dog.group.scale.setScalar(1.25);scene.add(dog.group);
+  // Its stuffed beagle friend snuggles up against its side, leaning its head on the cat.
+  const dog=createTrainDog(buddy.colors,{lean:-.3});
+  dog.group.position.set(1.75,1.068,7.16);dog.group.rotation.y=Math.PI-.46;dog.group.scale.setScalar(1.25);scene.add(dog.group);
   const catHead=new THREE.Vector3();
   // Both ends are closed, including the rear visible from the about camera.
   for(const [z,facing] of [[front,0],[rear,Math.PI]]){
