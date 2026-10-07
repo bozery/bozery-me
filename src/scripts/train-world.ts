@@ -1,8 +1,14 @@
 import * as THREE from 'three';
-import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { createTrainBook } from './train-book';
+import { mountainGeometry, cumulusGeometry, leafGeometry, contactShadowTexture, contactShadows, verticalGradient, curtainGeometry } from './train-detail';
+import { createKit } from './train-kit';
+import { createCameraRig } from './train-camera';
+import { createTrainCat } from './train-cat';
+import { companion } from '../data/companion';
+import { buildBench } from './train-seat';
+import { floorTexture, runnerTexture, woodTexture, wallTexture } from './train-textures';
 
 export type TrainView = 'home' | 'notes' | 'article' | 'gallery' | 'about';
 
@@ -45,14 +51,16 @@ export function createTrainWorld(host: HTMLElement) {
   const room = new RoomEnvironment();
   const environment = pmrem.fromScene(room, .06);
   scene.environment = environment.texture;
-  scene.environmentIntensity = .36;
+  scene.environmentIntensity = .5;
   room.dispose(); pmrem.dispose();
-  scene.add(new THREE.HemisphereLight('#e6f5ff', '#b5afa1', 1.6));
-  const sun = new THREE.DirectionalLight('#fff4de', 2.6);
+  scene.add(new THREE.HemisphereLight('#e6f5ff', '#b5afa1', 1.15));
+  const sun = new THREE.DirectionalLight('#fff2d8', 3.4);
   sun.position.set(14, 16, -9); sun.target.position.set(0,0,-2);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(1024,1024);
-  Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 12, bottom: -12, near: 1, far: 48 });
+  const desktop=innerWidth>=701;
+  sun.shadow.mapSize.set(desktop?4096:2048,desktop?4096:2048);
+  // Cover the whole carriage so every bay gets window-shaped sunlight.
+  Object.assign(sun.shadow.camera, { left: -18, right: 18, top: 18, bottom: -18, near: 1, far: 60 });
   sun.shadow.bias = -.0003; sun.shadow.normalBias = .025;
   scene.add(sun, sun.target);
 
@@ -60,14 +68,12 @@ export function createTrainWorld(host: HTMLElement) {
   const geometries: THREE.BufferGeometry[] = [];
   const textures: THREE.Texture[] = [];
   const material = (color: string, roughness=.65, metalness=0) => {
-    // Matte walls, cloth and wood need diffuse light, not per-pixel PBR reflections.
-    // Keep the physical material on metal and glazed accents where it is visible.
-    const m = metalness>.2||roughness<.4
-      ? new THREE.MeshStandardMaterial({color,roughness,metalness})
-      : new THREE.MeshLambertMaterial({color});
+    // Physical shading everywhere: soft highlights from the room environment give
+    // walls, cloth and wood their form instead of flat diffuse fills.
+    const m = new THREE.MeshStandardMaterial({color,roughness,metalness});
     materials.push(m);return m;
   };
-  const ivory = material('#e7e8db'), trim = material('#f3f2e6',.34), gasket = material('#506768',.65);
+  const ivory = material('#e7e8db',.78), trim = material('#f3f2e6',.34), gasket = material('#506768',.65);
   const floorMat = material('#b9b7a6', .84), metal = material('#baccc8', .3,.65);
   const fabric = material('#438f90', .95), fabricLight = material('#74b1ac', .98);
   const seam = material('#337b7d'), wood = material('#e0d0ad', .6), dark = material('#526866');
@@ -80,29 +86,28 @@ export function createTrainWorld(host: HTMLElement) {
   // Filter the fine weave across distance and render scales to avoid shimmer.
   weave.generateMipmaps=true;weave.minFilter=THREE.LinearMipmapLinearFilter;weave.magFilter=THREE.LinearFilter;weave.anisotropy=2;weave.needsUpdate=true;textures.push(weave);
   fabric.map=weave;fabricLight.map=weave;
-  const lamp = material('#fff7d6',.25); lamp.emissive.set('#fff0c0'); lamp.emissiveIntensity=.7;
+  const lamp = material('#fff7d6',.25); lamp.emissive.set('#fff0c0'); lamp.emissiveIntensity=1.5;
+  const linen = material('#f8f5ea',.9), runner = material('#3f8584',.95), curtain = material('#e9dcc0',.92);
+  curtain.side=THREE.DoubleSide;
+  const front=-15.5,rear=11.5,length=rear-front,center=(front+rear)/2;
+  for(const [m,t] of [[floorMat,floorTexture(length)],[runner,runnerTexture(length)],[wood,woodTexture()],[ivory,wallTexture()]] as const){
+    (m as THREE.MeshStandardMaterial).map=t;textures.push(t);
+  }
   const carriage = new THREE.Group(); scene.add(carriage);
-  function box(w:number,h:number,d:number,m:THREE.Material,x:number,y:number,z:number,r=.04,parent:THREE.Object3D=carriage) {
-    const g = r ? new RoundedBoxGeometry(w,h,d,1,Math.min(r,w/3,h/3,d/3)) : new THREE.BoxGeometry(w,h,d);
-    geometries.push(g); const mesh = new THREE.Mesh(g,m); mesh.position.set(x,y,z);
-    mesh.castShadow=true; mesh.receiveShadow=true; parent.add(mesh); return mesh;
-  }
-  function cylinder(radius:number,height:number,m:THREE.Material,x:number,y:number,z:number,parent:THREE.Object3D=carriage) {
-    const g = new THREE.CylinderGeometry(radius,radius,height,16); geometries.push(g);
-    const mesh=new THREE.Mesh(g,m); mesh.position.set(x,y,z); mesh.castShadow=true; mesh.receiveShadow=true; parent.add(mesh); return mesh;
-  }
+  const kit = createKit(carriage, geometries), { box, cylinder, mesh } = kit;
   function wallShape(shape: THREE.Shape, x: number, m: THREE.Material, depth=.12) {
     const g=new THREE.ExtrudeGeometry(shape,{depth,bevelEnabled:false,curveSegments:16}); geometries.push(g);
     const mesh=new THREE.Mesh(g,m); mesh.rotation.y=Math.PI/2; mesh.position.x=x;
     mesh.castShadow=true; mesh.receiveShadow=true; carriage.add(mesh); return mesh;
   }
 
-  const front=-15.5,rear=11.5,length=rear-front,center=(front+rear)/2;
   box(6.25,.18,length,floorMat,0,-.11,center,0);
-  // Long seams and a narrow teal aisle inlay give the floor scale without clutter.
-  for(let x=-2.7;x<3;x+=.54) box(.012,.005,length,ivory,x,-.012,center,0);
-  box(.025,.005,length,seam,-.75,-.008,center,0);
+  // A woven runner down the aisle.
+  box(1.36,.012,length-.6,runner,0,-.014,center,.004);
   box(6.3,.18,length,ivory,0,3.65,center,.08);
+  // A continuous diffuse light panel down the centre of the ceiling.
+  box(.62,.03,length-.8,trim,0,3.545,center,.012);
+  box(.5,.012,length-1,lamp,0,3.525,center,.004);
   for(const x of [-2.62,2.62]) {
     box(.34,.28,length,trim,x,3.48,center,.12);
     box(.065,.022,length,lamp,x-Math.sign(x)*.22,3.36,center,.01);
@@ -127,36 +132,33 @@ export function createTrainWorld(host: HTMLElement) {
       const glassGeo=new THREE.ShapeGeometry(glassShape); geometries.push(glassGeo);
       const glass=new THREE.Mesh(glassGeo,glassMat); glass.rotation.y=Math.PI/2; glass.position.x=side*3.075; carriage.add(glass);
       box(.25,.075,4.0,trim,side*2.91,1.065,z,.03);
+      // Gathered curtains at both window edges, held by a tie-back.
+      for(const edge of [-1,1]){
+        const drape=mesh(curtainGeometry(.4,2.1,3,.05),curtain,side*2.84,2.16,z+edge*1.86);
+        drape.rotation.y=side*Math.PI/2;
+        box(.05,.05,.3,wood,side*2.83,1.45,z+edge*1.86,.02);
+      }
+      // A rolled blind under each window head, with a small pull tab.
+      const roll=cylinder(.055,3.7,ivory,side*2.82,3.09,z);roll.rotation.x=Math.PI/2;
+      box(.014,.08,.1,wood,side*2.8,3.0,z,.005);
     }
     box(.06,.028,length,fabricLight,side*2.95,.79,center,.01);
     box(.045,.12,length,metal,side*2.96,.17,center,.01);
   }
 
-  function bench(x:number,z:number,facing:number) {
-    const seat=new THREE.Group(); seat.position.set(x,0,z); seat.rotation.y=facing; carriage.add(seat);
-    box(1.65,.23,.96,trim,0,.46,0,.09,seat);
-    box(1.57,.22,.9,fabric,0,.62,-.01,.1,seat);
-    const back=box(1.68,1.15,.20,trim,0,1.12,.45,.10,seat); back.rotation.x=-.1;
-    const cushion=box(1.55,1.02,.19,fabricLight,0,1.18,.32,.09,seat); cushion.rotation.x=-.1;
-    box(.013,.77,.011,seam,0,1.15,.217,.003,seat);
-    box(1.23,.24,.09,fabricLight,0,1.57,.205,.035,seat);
-    for (const side of [-1,1]) {
-      box(.10,.09,.78,wood,side*.86,.89,.04,.045,seat);
-      box(.035,.34,.05,metal,side*.86,.69,.32,.01,seat);
-      box(.065,.44,.65,metal,side*.55,.23,.04,.015,seat);
-    }
-  }
-  for (const z of [-7.3,1.0,8.4]) { bench(2.02,z,0); bench(-2.02,z,0); }
+  const seatMaterials={shell:trim,fabric,fabricLight,seam,wood,metal,linen};
+  for (const z of [-7.3,1.0,8.4]) { buildBench(kit,seatMaterials,carriage,2.02,z,0); buildBench(kit,seatMaterials,carriage,-2.02,z,0); }
   for (const z of [-3.45,4.95]) {
-    bench(2.02,z,Math.PI);
+    buildBench(kit,seatMaterials,carriage,2.02,z,Math.PI);
     // The exhibition partition takes up part of this bay. Leave clearance for
     // the entire seat, including the far armrest, in front of the framed artwork.
-    bench(z===-3.45?-1.48:-2.02,z,Math.PI);
+    buildBench(kit,seatMaterials,carriage,z===-3.45?-1.48:-2.02,z,Math.PI);
   }
   // Window tables anchor the different views inside the same carriage.
   for (const z of [-5.4,-1.2,3.0,7.4]) {
     box(1.82,.085,1.17,wood,2.03,1.025,z,.15);
     box(1.83,.028,1.18,trim,2.03,.983,z,.12);
+    box(.02,.05,1.12,metal,1.12,1.02,z,.01);
     cylinder(.075,.93,metal,1.85,.49,z);
     box(.68,.06,.54,metal,1.85,.04,z,.08);
   }
@@ -213,11 +215,24 @@ export function createTrainWorld(host: HTMLElement) {
   cylinder(.18,.012,lamp,2.68,1.444,7.72);
   const plantPot=material('#b4c6b1'),leafMat=material('#628e79',.9);
   cylinder(.1,.16,plantPot,2.49,1.14,7.12);
-  const leafGeo=new THREE.SphereGeometry(1,12,8);geometries.push(leafGeo);
-  for(let i=0;i<7;i++){
-    const leaf=new THREE.Mesh(leafGeo,leafMat),angle=i*2.4;
-    leaf.scale.set(.045,.11,.012);leaf.position.set(2.49+Math.cos(angle)*.075,1.29+(i%3)*.04,7.12+Math.sin(angle)*.075);leaf.rotation.set(.5*Math.cos(angle),angle,.6*Math.sin(angle));leaf.castShadow=true;carriage.add(leaf);
+  leafMat.side=THREE.DoubleSide;
+  const leafGeo=leafGeometry();geometries.push(leafGeo);
+  for(let i=0;i<11;i++){
+    const leaf=new THREE.Mesh(leafGeo,leafMat),angle=i*2.4,tilt=.35+(i%3)*.18;
+    const size=.16+(i%4)*.025;leaf.scale.set(size*.7,size,size);
+    leaf.position.set(2.49,1.21,7.12);leaf.rotation.set(0,-angle,0);leaf.rotateX(-tilt);leaf.castShadow=true;carriage.add(leaf);
   }
+  // Soft contact shadows ground the furniture on the floor.
+  const shadowTexture=contactShadowTexture();textures.push(shadowTexture);
+  const floorShadows=contactShadows([
+    ...[-7.3,1.0,8.4].flatMap(z=>[{x:2.02,z:z+.05,w:2.1,d:1.5},{x:-2.02,z:z+.05,w:2.1,d:1.5}]),
+    ...[-3.45,4.95].flatMap(z=>[{x:2.02,z:z-.05,w:2.1,d:1.5},{x:z===-3.45?-1.48:-2.02,z:z-.05,w:2.1,d:1.5}]),
+    ...[-5.4,-1.2,3.0,7.4].map(z=>({x:1.85,z,w:1.1,d:.95})),
+  ],-.004,shadowTexture);
+  geometries.push(floorShadows.geometry);materials.push(floorShadows.material);carriage.add(floorShadows);
+  // A cat naps on the rear table; it belongs to the About page's thank-you note.
+  const cat=createTrainCat(companion.colors);
+  cat.group.position.set(1.62,1.068,7.45);cat.group.rotation.y=Math.PI-.4;cat.group.scale.setScalar(1.25);scene.add(cat.group);
   // Both ends are closed, including the rear visible from the about camera.
   for(const [z,facing] of [[front,0],[rear,Math.PI]]){
     const end=new THREE.Group();end.position.z=z;end.rotation.y=facing;carriage.add(end);
@@ -281,8 +296,9 @@ export function createTrainWorld(host: HTMLElement) {
 
   // Rounded cloud banks give the foreground a readable silhouette and parallax.
   // They share geometry and a single draw call; the distant layer stays procedural.
-  const puffGeo=new THREE.SphereGeometry(1,16,10);geometries.push(puffGeo);
-  const puffMaterial=material('#d7e8eb',1);
+  // Bright tops fading to shaded blue undersides read as lit, soft cloud.
+  const puffGeo=verticalGradient(cumulusGeometry(),'#a9c8d3','#ffffff',-.2,.8);geometries.push(puffGeo);
+  const puffMaterial=material('#ffffff',1);puffMaterial.vertexColors=true;puffMaterial.emissive.set('#a8cad3');puffMaterial.emissiveIntensity=.3;
   const puffCount=150;
   const puffs=new THREE.InstancedMesh(puffGeo,puffMaterial,puffCount);scene.add(puffs);
   puffs.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -314,9 +330,9 @@ export function createTrainWorld(host: HTMLElement) {
     }
     if(i%7===0) { cylinder(.58,24,bridgeMat,mid.x,mid.y-12.3,mid.z,viaduct); box(3.0,.6,1.0,bridgeMat,mid.x,mid.y-.7,mid.z,.05,viaduct).rotation.y=angle; }
   }
-  const mountainMat=material('#98c4cd',.95);
-  const mountainGeo=new THREE.ConeGeometry(28,34,5); geometries.push(mountainGeo);
+  const mountainMat=material('#ffffff',.95);mountainMat.vertexColors=true;
   for(const [x,z,scale] of [[108,-155,1],[160,-240,1.3],[60,-285,.8]]) {
+    const mountainGeo=verticalGradient(mountainGeometry(28,34,x),'#86b5c2','#f4f8f6',6,13); geometries.push(mountainGeo);
     const peak=new THREE.Mesh(mountainGeo,mountainMat); peak.position.set(x,-10,z); peak.scale.set(scale,scale*.8,scale); peak.rotation.y=x; scene.add(peak);
   }
   const passing=new THREE.Group(); scene.add(passing);
@@ -354,41 +370,56 @@ export function createTrainWorld(host: HTMLElement) {
   let view:TrainView=(host.dataset.view as TrainView)||'home';
   let elapsed=0,previous=0,frame=0,disposed=false,hidden=document.hidden,lost=false;
   let qualityScale=1,sampleDuration=0,sampleFrames=0,shadowUpdates=0;
-  const position=new THREE.Vector3(),look=new THREE.Vector3();
-  const startPosition=new THREE.Vector3(),startLook=new THREE.Vector3();
-  const orientation=new THREE.Quaternion(),startOrientation=new THREE.Quaternion(),targetOrientation=new THREE.Quaternion();
-  const orientationFor=(p:THREE.Vector3,l:THREE.Vector3)=>new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(p,l,new THREE.Vector3(0,1,0)));
-  let transitionStart=0,transitionDuration=0;
-  let targetPosition=new THREE.Vector3(),targetLook=new THREE.Vector3();
+  const rig=createCameraRig(camera,()=>reduced.matches);
   function framing(which:TrainView) {
     const mobile=innerWidth<701;
     switch(which){
       case 'home':return {position:new THREE.Vector3(mobile?-1.1:-1.9,mobile?1.95:1.9,mobile?4.4:5.25),look:new THREE.Vector3(2.6,mobile?1.75:1.65,-1.8)};
       case 'notes':case 'article':return {position:new THREE.Vector3(1.15,3.3,-.15),look:new THREE.Vector3(mobile?1.65:1.05,1.03,-1.4)};
       case 'gallery':return {position:new THREE.Vector3(.9,2.0,.8),look:new THREE.Vector3(-2.3,1.92,mobile?-3.3:-1.1)};
-      case 'about':return {position:new THREE.Vector3(-.9,1.86,4.65),look:new THREE.Vector3(2.45,1.53,mobile?7.6:6.6)};
+      case 'about':return {position:new THREE.Vector3(-.9,1.86,4.65),look:new THREE.Vector3(2.45,mobile?1.95:1.53,mobile?7.6:6.6)};
     }
   }
-  const initial=framing(view); position.copy(initial.position);look.copy(initial.look);
-  targetPosition.copy(position);targetLook.copy(look);
-  orientation.copy(orientationFor(position,look));targetOrientation.copy(orientation);
+  // Opening shot: start a little behind and above the framing, then glide in.
+  const initial=framing(view);
+  const back=initial.position.clone().sub(initial.look).setY(0).normalize();
+  rig.set(initial.position.clone().addScaledVector(back,1.1).add(new THREE.Vector3(0,.28,0)),initial.look);
+  rig.travel(initial.position,initial.look,0,2.8);
   function moveTo(next:TrainView,instant=false) {
     if(next===view && !instant)return;
     view=next;host.dataset.view=next;
     sampleDuration=0;sampleFrames=0;
-    const dest=framing(next); targetPosition=dest.position;targetLook=dest.look;
-    startOrientation.copy(orientation);targetOrientation.copy(orientationFor(targetPosition,targetLook));
-    startPosition.copy(position);startLook.copy(look);transitionStart=elapsed;
-    transitionDuration=instant||reduced.matches?0:2.1;
-    if(!transitionDuration){position.copy(targetPosition);look.copy(targetLook);orientation.copy(targetOrientation);}
+    const dest=framing(next);
+    if(instant)rig.retarget(dest.position,dest.look);else rig.travel(dest.position,dest.look,elapsed);
     book.setReading(next==='notes'||next==='article',elapsed);
+    if(next!=='about'){setHover(false);clearTimeout(sleepTimer);cat.setAwake(false);}
     if(next==='gallery')loadWallArt();
     if(reduced.matches)render(0);
   }
+  // The canvas ignores pointer events, so hover and clicks on the cat are hit-tested from the window.
+  const raycaster=new THREE.Raycaster(),pointerNdc=new THREE.Vector2();
+  let hovering=false,sleepTimer:ReturnType<typeof setTimeout>|undefined;
+  const blocked=(target:EventTarget|null)=>target instanceof Element&&!!target.closest('a,button,input,textarea,select,dialog,[data-companion-card]');
+  function catUnder(event:PointerEvent|MouseEvent){
+    if(view!=='about'||blocked(event.target))return false;
+    pointerNdc.set(event.clientX/innerWidth*2-1,-(event.clientY/innerHeight)*2+1);
+    raycaster.setFromCamera(pointerNdc,camera);return cat.hit(raycaster);
+  }
+  function setHover(next:boolean){if(next===hovering)return;hovering=next;document.documentElement.classList.toggle('companion-hover',next);if(next)cat.twitch(elapsed);}
+  function wakeCompanion(open=true){
+    clearTimeout(sleepTimer);
+    if(open){cat.setAwake(true);dispatchEvent(new CustomEvent('bozery:companion',{detail:{open:true}}));}
+    else sleepTimer=setTimeout(()=>cat.setAwake(false),1600);
+    if(reduced.matches)render(0);
+  }
+  const onPointerMove=(event:PointerEvent)=>{if(event.pointerType==='mouse')setHover(catUnder(event));};
+  const onClick=(event:MouseEvent)=>{if(catUnder(event))wakeCompanion(true);};
+  const onCardClosed=()=>wakeCompanion(false);
+  addEventListener('pointermove',onPointerMove,{passive:true});addEventListener('click',onClick);addEventListener('bozery:companion-closed',onCardClosed);
   function sizeCanvas() {
     const w=innerWidth,h=innerHeight;
     // Bound the 3D pixel cost on high-DPI and large screens. DOM text stays native.
-    renderer.setPixelRatio(qualityScale*Math.min(devicePixelRatio,1.25,Math.sqrt(1_800_000/(w*h))));
+    renderer.setPixelRatio(qualityScale*Math.min(devicePixelRatio,1.5,Math.sqrt(2_600_000/(w*h))));
     renderer.setSize(w,h,false);
   }
   function resize() {
@@ -399,14 +430,8 @@ export function createTrainWorld(host: HTMLElement) {
   }
   function render(dt:number) {
     elapsed+=dt;
-    if(transitionDuration) {
-      const t=Math.min((elapsed-transitionStart)/transitionDuration,1);
-      const ease=t*t*t*(t*(t*6-15)+10);
-      position.lerpVectors(startPosition,targetPosition,ease);look.lerpVectors(startLook,targetLook,ease);
-      orientation.slerpQuaternions(startOrientation,targetOrientation,ease);
-      if(t===1)transitionDuration=0;
-    }
-    camera.position.copy(position);camera.quaternion.copy(orientation);
+    rig.update(elapsed,dt);
+    cat.update(elapsed,dt,reduced.matches,camera.position);
     if(book.update(elapsed,reduced.matches))renderer.shadowMap.needsUpdate=true;
     cloudUniforms.time.value=elapsed;
     for(let i=0;i<masts.length;i++)masts[i].position.z=((i*22+elapsed*2.3)%154)-120;
@@ -427,7 +452,7 @@ export function createTrainWorld(host: HTMLElement) {
     const interval=previous?now-previous:0;
     // Learn a conservative resolution while stationary. Ignore startup, navigation
     // and long browser stalls; never oscillate sharpness between adjacent pages.
-    if(elapsed>2&&!transitionDuration&&interval>0&&interval<100){
+    if(elapsed>2&&!rig.moving&&interval>0&&interval<100){
       sampleDuration+=interval;sampleFrames++;
       if(sampleDuration>=1500){
         if(sampleDuration/sampleFrames>19&&qualityScale>.7){qualityScale=Math.max(.7,qualityScale-.1);sizeCanvas();}
@@ -447,12 +472,15 @@ export function createTrainWorld(host: HTMLElement) {
   resize();resume();
   return {
     moveTo,
+    wakeCompanion,
     // Read-only snapshots also make continuity and camera motion inspectable.
-    snapshot:()=>({view,elapsed,position:position.toArray(),look:look.toArray(),orientation:orientation.toArray(),moving:transitionDuration>0,book:book.snapshot(),artLoaded,drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles,qualityScale,pixelRatio:renderer.getPixelRatio(),shadowUpdates}),
+    snapshot:()=>({view,elapsed,...rig.state(),moving:rig.moving,book:book.snapshot(),artLoaded,drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles,qualityScale,pixelRatio:renderer.getPixelRatio(),shadowUpdates}),
     dispose(){
       disposed=true;cancelAnimationFrame(frame);removeEventListener('resize',resize);document.removeEventListener('visibilitychange',visibility);reduced.removeEventListener('change',motion);
       canvas.removeEventListener('webglcontextlost',contextLost);canvas.removeEventListener('webglcontextrestored',contextRestored);
-      geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());environment.dispose();renderer.dispose();
+      geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());environment.dispose();rig.dispose();cat.dispose();
+      removeEventListener('pointermove',onPointerMove);removeEventListener('click',onClick);removeEventListener('bozery:companion-closed',onCardClosed);clearTimeout(sleepTimer);
+      renderer.dispose();
       puffs.dispose();
       book.dispose();
     }

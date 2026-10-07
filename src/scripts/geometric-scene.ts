@@ -63,7 +63,7 @@ function enterScene(animate: boolean) {
   document.querySelector('#geo-main')?.removeAttribute('aria-busy');
   if (animate && !stopped()) {
     document.body.dataset.geoPhase = 'enter';
-    enterTimer = setTimeout(() => delete document.body.dataset.geoPhase, 1350);
+    enterTimer = setTimeout(() => delete document.body.dataset.geoPhase, 1700);
   } else delete document.body.dataset.geoPhase;
 }
 

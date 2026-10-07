@@ -19,6 +19,6 @@ const { Content } = await render(post);
     </header>
     {post.data.heroImage && <Image class="geo-article-cover" src={post.data.heroImage} width={1000} alt={post.data.heroImageAlt ?? ''} />}
     <div class="geo-prose"><Content /></div>
-    <footer class="geo-article-footer"><span>写于 <FormattedDate date={post.data.pubDate} /></span><a href="/blog/">回到随笔 <span aria-hidden="true">↗</span></a></footer>
+    <footer class="geo-article-footer"><a href="/blog/"><span aria-hidden="true">↖</span> 回到随笔</a></footer>
   </article>
 </GeometricLayout>
