@@ -19,7 +19,7 @@ export function mountainGeometry(radius: number, height: number, seed = 0) {
 
 /** A unit puff with a flattened base, so instanced clouds read as cumulus rather than balls. */
 export function cumulusGeometry() {
-  const g = new THREE.SphereGeometry(1, 28, 18);
+  const g = new THREE.SphereGeometry(1, 20, 12);
   const p = g.attributes.position;
   for (let i = 0; i < p.count; i++) {
     const y = p.getY(i);
@@ -59,7 +59,7 @@ export function contactShadowTexture(size = 64) {
 }
 
 /** Merges floor-level contact shadows into one transparent mesh (one draw call). */
-export function contactShadows(spots: { x: number; z: number; w: number; d: number }[], y: number, texture: THREE.Texture, opacity = .32) {
+export function contactShadows(spots: { x: number; z: number; w: number; d: number }[], y: number, texture: THREE.Texture, opacity = .45) {
   const parts = spots.map(({ x, z, w, d }) => {
     const g = new THREE.PlaneGeometry(w, d);
     g.rotateX(-Math.PI / 2);
@@ -82,4 +82,58 @@ export function contactShadows(spots: { x: number; z: number; w: number; d: numb
   const mesh = new THREE.Mesh(geometry, material);
   mesh.renderOrder = 2;
   return mesh;
+}
+
+/**
+ * A rounded block with a soft crown, for cushions. Vertices are packed toward the
+ * edges so the rounding stays smooth without a dense grid across each face.
+ * `axis` names the face that bulges: 'y' crowns the top, 'z' pushes the -z face.
+ */
+export function pillowGeometry(w: number, h: number, d: number, r: number, bulge: number, axis: 'y' | 'z' = 'y') {
+  const g = new THREE.BoxGeometry(w, h, d, 12, 6, 12);
+  const p = g.attributes.position, n = g.attributes.normal;
+  const half = [w / 2, h / 2, d / 2];
+  const pack = (v: number, size: number) => { const t = Math.abs(v) / size; return Math.sign(v) * size * (1 - (1 - t) ** 2); };
+  const v = new THREE.Vector3(), inner = new THREE.Vector3(), normal = new THREE.Vector3();
+  for (let i = 0; i < p.count; i++) {
+    v.set(pack(p.getX(i), half[0]), pack(p.getY(i), half[1]), pack(p.getZ(i), half[2]));
+    inner.set(
+      THREE.MathUtils.clamp(v.x, -half[0] + r, half[0] - r),
+      THREE.MathUtils.clamp(v.y, -half[1] + r, half[1] - r),
+      THREE.MathUtils.clamp(v.z, -half[2] + r, half[2] - r));
+    normal.subVectors(v, inner);
+    if (normal.lengthSq() < 1e-10) normal.set(n.getX(i), n.getY(i), n.getZ(i));
+    normal.normalize();
+    v.copy(inner).addScaledVector(normal, r);
+    const [a, b] = axis === 'y' ? [v.x / half[0], v.z / half[2]] : [v.x / half[0], v.y / half[1]];
+    const crown = bulge * (1 - a * a) * (1 - b * b);
+    if (axis === 'y') v.y += crown * Math.max(0, v.y / half[1]);
+    else v.z -= crown * Math.max(0, -v.z / half[2]);
+    p.setXYZ(i, v.x, v.y, v.z); n.setXYZ(i, normal.x, normal.y, normal.z);
+  }
+  return g;
+}
+
+/** Bakes a vertical colour gradient into a geometry's vertex colours. */
+export function verticalGradient(g: THREE.BufferGeometry, bottom: string, top: string, from: number, to: number) {
+  const p = g.attributes.position, colors = new Float32Array(p.count * 3);
+  const a = new THREE.Color(bottom), b = new THREE.Color(top), c = new THREE.Color();
+  for (let i = 0; i < p.count; i++) {
+    c.lerpColors(a, b, THREE.MathUtils.smoothstep(p.getY(i), from, to));
+    colors.set([c.r, c.g, c.b], i * 3);
+  }
+  g.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  return g;
+}
+
+/** A hanging curtain panel gathered into soft vertical folds. */
+export function curtainGeometry(width: number, height: number, folds = 5, depth = .05) {
+  const g = new THREE.PlaneGeometry(width, height, folds * 8, 4);
+  const p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i) / width + .5;
+    p.setZ(i, Math.sin(x * folds * Math.PI * 2) * depth * (.6 + .4 * (1 - (p.getY(i) / height + .5))));
+  }
+  g.computeVertexNormals();
+  return g;
 }

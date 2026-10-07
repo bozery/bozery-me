@@ -1,9 +1,11 @@
 import * as THREE from 'three';
-import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { createTrainBook } from './train-book';
-import { mountainGeometry, cumulusGeometry, leafGeometry, contactShadowTexture, contactShadows } from './train-detail';
+import { mountainGeometry, cumulusGeometry, leafGeometry, contactShadowTexture, contactShadows, verticalGradient, curtainGeometry } from './train-detail';
+import { createKit } from './train-kit';
+import { buildBench } from './train-seat';
+import { floorTexture, runnerTexture, woodTexture, wallTexture } from './train-textures';
 
 export type TrainView = 'home' | 'notes' | 'article' | 'gallery' | 'about';
 
@@ -46,14 +48,16 @@ export function createTrainWorld(host: HTMLElement) {
   const room = new RoomEnvironment();
   const environment = pmrem.fromScene(room, .06);
   scene.environment = environment.texture;
-  scene.environmentIntensity = .36;
+  scene.environmentIntensity = .5;
   room.dispose(); pmrem.dispose();
-  scene.add(new THREE.HemisphereLight('#e6f5ff', '#b5afa1', 1.6));
-  const sun = new THREE.DirectionalLight('#fff4de', 2.6);
+  scene.add(new THREE.HemisphereLight('#e6f5ff', '#b5afa1', 1.15));
+  const sun = new THREE.DirectionalLight('#fff2d8', 3.4);
   sun.position.set(14, 16, -9); sun.target.position.set(0,0,-2);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(2048,2048);
-  Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 12, bottom: -12, near: 1, far: 48 });
+  const desktop=innerWidth>=701;
+  sun.shadow.mapSize.set(desktop?4096:2048,desktop?4096:2048);
+  // Cover the whole carriage so every bay gets window-shaped sunlight.
+  Object.assign(sun.shadow.camera, { left: -18, right: 18, top: 18, bottom: -18, near: 1, far: 60 });
   sun.shadow.bias = -.0003; sun.shadow.normalBias = .025;
   scene.add(sun, sun.target);
 
@@ -79,29 +83,28 @@ export function createTrainWorld(host: HTMLElement) {
   // Filter the fine weave across distance and render scales to avoid shimmer.
   weave.generateMipmaps=true;weave.minFilter=THREE.LinearMipmapLinearFilter;weave.magFilter=THREE.LinearFilter;weave.anisotropy=2;weave.needsUpdate=true;textures.push(weave);
   fabric.map=weave;fabricLight.map=weave;
-  const lamp = material('#fff7d6',.25); lamp.emissive.set('#fff0c0'); lamp.emissiveIntensity=.7;
+  const lamp = material('#fff7d6',.25); lamp.emissive.set('#fff0c0'); lamp.emissiveIntensity=1.5;
+  const linen = material('#f8f5ea',.9), runner = material('#3f8584',.95), curtain = material('#e9dcc0',.92);
+  curtain.side=THREE.DoubleSide;
+  const front=-15.5,rear=11.5,length=rear-front,center=(front+rear)/2;
+  for(const [m,t] of [[floorMat,floorTexture(length)],[runner,runnerTexture(length)],[wood,woodTexture()],[ivory,wallTexture()]] as const){
+    (m as THREE.MeshStandardMaterial).map=t;textures.push(t);
+  }
   const carriage = new THREE.Group(); scene.add(carriage);
-  function box(w:number,h:number,d:number,m:THREE.Material,x:number,y:number,z:number,r=.04,parent:THREE.Object3D=carriage) {
-    const g = r ? new RoundedBoxGeometry(w,h,d,3,Math.min(r,w/3,h/3,d/3)) : new THREE.BoxGeometry(w,h,d);
-    geometries.push(g); const mesh = new THREE.Mesh(g,m); mesh.position.set(x,y,z);
-    mesh.castShadow=true; mesh.receiveShadow=true; parent.add(mesh); return mesh;
-  }
-  function cylinder(radius:number,height:number,m:THREE.Material,x:number,y:number,z:number,parent:THREE.Object3D=carriage) {
-    const g = new THREE.CylinderGeometry(radius,radius,height,32); geometries.push(g);
-    const mesh=new THREE.Mesh(g,m); mesh.position.set(x,y,z); mesh.castShadow=true; mesh.receiveShadow=true; parent.add(mesh); return mesh;
-  }
+  const kit = createKit(carriage, geometries), { box, cylinder, mesh } = kit;
   function wallShape(shape: THREE.Shape, x: number, m: THREE.Material, depth=.12) {
     const g=new THREE.ExtrudeGeometry(shape,{depth,bevelEnabled:false,curveSegments:16}); geometries.push(g);
     const mesh=new THREE.Mesh(g,m); mesh.rotation.y=Math.PI/2; mesh.position.x=x;
     mesh.castShadow=true; mesh.receiveShadow=true; carriage.add(mesh); return mesh;
   }
 
-  const front=-15.5,rear=11.5,length=rear-front,center=(front+rear)/2;
   box(6.25,.18,length,floorMat,0,-.11,center,0);
-  // Long seams and a narrow teal aisle inlay give the floor scale without clutter.
-  for(let x=-2.7;x<3;x+=.54) box(.012,.005,length,ivory,x,-.012,center,0);
-  box(.025,.005,length,seam,-.75,-.008,center,0);
+  // A woven runner down the aisle.
+  box(1.36,.012,length-.6,runner,0,-.014,center,.004);
   box(6.3,.18,length,ivory,0,3.65,center,.08);
+  // A continuous diffuse light panel down the centre of the ceiling.
+  box(.62,.03,length-.8,trim,0,3.545,center,.012);
+  box(.5,.012,length-1,lamp,0,3.525,center,.004);
   for(const x of [-2.62,2.62]) {
     box(.34,.28,length,trim,x,3.48,center,.12);
     box(.065,.022,length,lamp,x-Math.sign(x)*.22,3.36,center,.01);
@@ -126,6 +129,12 @@ export function createTrainWorld(host: HTMLElement) {
       const glassGeo=new THREE.ShapeGeometry(glassShape); geometries.push(glassGeo);
       const glass=new THREE.Mesh(glassGeo,glassMat); glass.rotation.y=Math.PI/2; glass.position.x=side*3.075; carriage.add(glass);
       box(.25,.075,4.0,trim,side*2.91,1.065,z,.03);
+      // Gathered curtains at both window edges, held by a tie-back.
+      for(const edge of [-1,1]){
+        const drape=mesh(curtainGeometry(.4,2.1,3,.05),curtain,side*2.84,2.16,z+edge*1.86);
+        drape.rotation.y=side*Math.PI/2;
+        box(.05,.05,.3,wood,side*2.83,1.45,z+edge*1.86,.02);
+      }
       // A rolled blind under each window head, with a small pull tab.
       const roll=cylinder(.055,3.7,ivory,side*2.82,3.09,z);roll.rotation.x=Math.PI/2;
       box(.014,.08,.1,wood,side*2.8,3.0,z,.005);
@@ -134,34 +143,19 @@ export function createTrainWorld(host: HTMLElement) {
     box(.045,.12,length,metal,side*2.96,.17,center,.01);
   }
 
-  function bench(x:number,z:number,facing:number) {
-    const seat=new THREE.Group(); seat.position.set(x,0,z); seat.rotation.y=facing; carriage.add(seat);
-    box(1.65,.23,.96,trim,0,.46,0,.09,seat);
-    box(1.57,.22,.9,fabric,0,.62,-.01,.1,seat);
-    const back=box(1.68,1.15,.20,trim,0,1.12,.45,.10,seat); back.rotation.x=-.1;
-    const cushion=box(1.55,1.02,.19,fabricLight,0,1.18,.32,.09,seat); cushion.rotation.x=-.1;
-    box(.013,.77,.011,seam,0,1.15,.217,.003,seat);
-    box(1.23,.24,.09,fabricLight,0,1.57,.205,.035,seat);
-    // Piping along the cushion edges reads as upholstery rather than blocks.
-    box(1.5,.016,.016,seam,0,.735,-.455,.006,seat);
-    const piping=box(1.5,.016,.016,seam,0,1.69,.27,.006,seat);piping.rotation.x=-.1;
-    for (const side of [-1,1]) {
-      box(.10,.09,.78,wood,side*.86,.89,.04,.045,seat);
-      box(.035,.34,.05,metal,side*.86,.69,.32,.01,seat);
-      box(.065,.44,.65,metal,side*.55,.23,.04,.015,seat);
-    }
-  }
-  for (const z of [-7.3,1.0,8.4]) { bench(2.02,z,0); bench(-2.02,z,0); }
+  const seatMaterials={shell:trim,fabric,fabricLight,seam,wood,metal,linen};
+  for (const z of [-7.3,1.0,8.4]) { buildBench(kit,seatMaterials,carriage,2.02,z,0); buildBench(kit,seatMaterials,carriage,-2.02,z,0); }
   for (const z of [-3.45,4.95]) {
-    bench(2.02,z,Math.PI);
+    buildBench(kit,seatMaterials,carriage,2.02,z,Math.PI);
     // The exhibition partition takes up part of this bay. Leave clearance for
     // the entire seat, including the far armrest, in front of the framed artwork.
-    bench(z===-3.45?-1.48:-2.02,z,Math.PI);
+    buildBench(kit,seatMaterials,carriage,z===-3.45?-1.48:-2.02,z,Math.PI);
   }
   // Window tables anchor the different views inside the same carriage.
   for (const z of [-5.4,-1.2,3.0,7.4]) {
     box(1.82,.085,1.17,wood,2.03,1.025,z,.15);
     box(1.83,.028,1.18,trim,2.03,.983,z,.12);
+    box(.02,.05,1.12,metal,1.12,1.02,z,.01);
     cylinder(.075,.93,metal,1.85,.49,z);
     box(.68,.06,.54,metal,1.85,.04,z,.08);
   }
@@ -296,8 +290,9 @@ export function createTrainWorld(host: HTMLElement) {
 
   // Rounded cloud banks give the foreground a readable silhouette and parallax.
   // They share geometry and a single draw call; the distant layer stays procedural.
-  const puffGeo=cumulusGeometry();geometries.push(puffGeo);
-  const puffMaterial=material('#dcebed',1);puffMaterial.emissive.set('#9cc2cb');puffMaterial.emissiveIntensity=.22;
+  // Bright tops fading to shaded blue undersides read as lit, soft cloud.
+  const puffGeo=verticalGradient(cumulusGeometry(),'#a9c8d3','#ffffff',-.2,.8);geometries.push(puffGeo);
+  const puffMaterial=material('#ffffff',1);puffMaterial.vertexColors=true;puffMaterial.emissive.set('#a8cad3');puffMaterial.emissiveIntensity=.3;
   const puffCount=150;
   const puffs=new THREE.InstancedMesh(puffGeo,puffMaterial,puffCount);scene.add(puffs);
   puffs.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -329,9 +324,9 @@ export function createTrainWorld(host: HTMLElement) {
     }
     if(i%7===0) { cylinder(.58,24,bridgeMat,mid.x,mid.y-12.3,mid.z,viaduct); box(3.0,.6,1.0,bridgeMat,mid.x,mid.y-.7,mid.z,.05,viaduct).rotation.y=angle; }
   }
-  const mountainMat=material('#98c4cd',.95);
+  const mountainMat=material('#ffffff',.95);mountainMat.vertexColors=true;
   for(const [x,z,scale] of [[108,-155,1],[160,-240,1.3],[60,-285,.8]]) {
-    const mountainGeo=mountainGeometry(28,34,x); geometries.push(mountainGeo);
+    const mountainGeo=verticalGradient(mountainGeometry(28,34,x),'#86b5c2','#f4f8f6',6,13); geometries.push(mountainGeo);
     const peak=new THREE.Mesh(mountainGeo,mountainMat); peak.position.set(x,-10,z); peak.scale.set(scale,scale*.8,scale); peak.rotation.y=x; scene.add(peak);
   }
   const passing=new THREE.Group(); scene.add(passing);
