@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { Companion } from '../data/companion';
 import { contactShadowTexture } from './train-detail';
 import { alignToSurface, blend, ellipsoid, roundCone, sdfGeometry, smax, smin, surfacePoint, type Sdf } from './sdf';
+import { mottle, plushMaterial, seam, stitch } from './train-plush';
 
 const damp = (current: number, target: number, rate: number, dt: number) => THREE.MathUtils.lerp(current, target, 1 - Math.exp(-rate * dt));
 const smooth = THREE.MathUtils.smoothstep;
@@ -9,24 +10,24 @@ const smooth = THREE.MathUtils.smoothstep;
 // Body: a curled loaf with a rounded haunch, a soft chest and tucked paws. Local +x is the head direction.
 const chest = ellipsoid(.09, .07, .025, .085, .065, .085);
 const paws = blend(.012, ellipsoid(.17, .022, .07, .052, .022, .03), ellipsoid(.155, .022, -.02, .05, .022, .03));
-const bodySdf: Sdf = (x, y, z) => {
+const bodySdf: Sdf = seam((x, y, z) => {
   let d = blend(.05,
     ellipsoid(0, .09, 0, .15, .09, .12),
     ellipsoid(-.08, .092, -.02, .105, .095, .11),
     chest)(x, y, z);
   d = smin(d, paws(x, y, z), .03);
   return smax(d, -y, .012);
-};
+}, 'z');
 
 // Head: a round skull with full cheeks, a small muzzle and chin. Ears are separate so they can twitch.
 const muzzle = blend(.012, ellipsoid(.064, -.024, .017, .027, .022, .024), ellipsoid(.064, -.024, -.017, .027, .022, .024), ellipsoid(.052, -.043, 0, .028, .016, .024));
-const headSdf: Sdf = (x, y, z) => {
+const headSdf: Sdf = seam((x, y, z) => {
   const d = blend(.025,
     ellipsoid(0, .004, 0, .074, .066, .084),
     ellipsoid(.02, -.024, .036, .055, .042, .046),
     ellipsoid(.02, -.024, -.036, .055, .042, .046))(x, y, z);
   return smin(d, muzzle(x, y, z), .014);
-};
+}, 'z', .004, .0025);
 
 // Ear: a flattened cone along +y with a cupped front; its base sinks into the head.
 const earOuter = roundCone(.04, .007, -.02, .046, 2.2);
@@ -34,14 +35,15 @@ const earInner = roundCone(.028, .003, -.006, .04, 2.2, .012);
 const earSdf: Sdf = (x, y, z) => smax(earOuter(x, y, z), -earInner(x, y, z), .004);
 
 /**
- * aqp, a small grey cat curled up asleep. It breathes while asleep, twitches its
+ * aqp, a small stuffed-toy grey cat curled up asleep. It breathes while asleep, twitches its
  * ears and tail when hovered and lifts its head when woken.
  */
 export function createTrainCat(colors: Companion['colors']) {
   const group = new THREE.Group(); group.name = 'companion-cat';
   const geometries: THREE.BufferGeometry[] = [], materials: THREE.Material[] = [];
   const fur = new THREE.Color(colors.fur), back = new THREE.Color(colors.stripes), light = new THREE.Color(colors.belly), pink = new THREE.Color(colors.accent);
-  const furMaterial = new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: .88, sheen: .35, sheenRoughness: .6, sheenColor: '#e4e8e8' });
+  const furMaterial = plushMaterial();
+  const thread = (out: THREE.Color, w: number) => out.lerp(back, w * .7);
   const mat = (color: string, roughness = .5) => { const m = new THREE.MeshStandardMaterial({ color, roughness }); materials.push(m); return m; };
   materials.push(furMaterial);
   const dark = mat('#26302f', .45), eye = mat(colors.eyes, .2), glint = new THREE.MeshBasicMaterial({ color: '#ffffff' }), nose = mat(colors.accent, .55);
@@ -63,18 +65,23 @@ export function createTrainCat(colors: Companion['colors']) {
     tabby(p, n, out, p.x * 52 + p.z * 10);
     const bib = smooth(p.x, .09, .17) * smooth(n.y, .65, .1), toes = 1 - smooth(paws(p.x, p.y, p.z), -.004, .01);
     out.lerp(light, Math.max(bib, toes));
+    if (p.y > .06) thread(out, stitch(p.z, p.x));
+    mottle(out, p.x, p.y, p.z);
   }), body);
 
   // Head, with face details placed on its surface.
-  const head = new THREE.Group(); head.position.set(.15, .1, .02); head.rotation.order = 'YZX'; group.add(head);
+  const head = new THREE.Group(); head.position.set(.15, .1, .02); head.rotation.order = 'YZX'; head.scale.setScalar(1.1); group.add(head);
   const headMesh = furMesh(sdfGeometry(headSdf, new THREE.Vector3(.01, -.005, 0), .11, 44, (p, n, out) => {
     tabby(p, n, out, -p.x * 70 + Math.abs(p.z) * 30);
     out.lerp(light, 1 - smooth(muzzle(p.x, p.y, p.z), -.002, .008));
+    if (p.y > .01 && p.x < .05) thread(out, stitch(p.z, Math.atan2(p.y, p.x) * .07));
+    mottle(out, p.x, p.y, p.z);
   }), head);
   const earGeometry = add(sdfGeometry(earSdf, new THREE.Vector3(0, .02, 0), .05, 28, (p, n, out) => {
     out.copy(fur).lerp(back, .35);
     const inside = smooth(n.x, 0, .5) * (1 - smooth(earInner(p.x, p.y, p.z), .001, .008));
     out.lerp(pink, inside * .85);
+    mottle(out, p.x, p.y, p.z);
   }));
   const ears: THREE.Mesh[] = [];
   for (const side of [-1, 1]) {
@@ -102,7 +109,7 @@ export function createTrainCat(colors: Companion['colors']) {
     const arc = alignToSurface(new THREE.Mesh(happyGeometry, dark), point.clone().addScaledVector(normal, .0015), normal);
     arc.position.y -= .004; arc.scale.y = .85; happy.add(arc);
     const cheek = at(0, -.01, 0, .62, -.32, side * .74);
-    const blush = alignToSurface(new THREE.Mesh(add(new THREE.CircleGeometry(.013, 24)), blushMaterial), cheek.point.addScaledVector(cheek.normal, .0012), cheek.normal);
+    const blush = alignToSurface(new THREE.Mesh(add(new THREE.CircleGeometry(.0105, 24)), blushMaterial), cheek.point.addScaledVector(cheek.normal, .0012), cheek.normal);
     blush.scale.set(1.5, 1, 1); smile.add(blush);
     const socket = alignToSurface(new THREE.Group(), point.clone().addScaledVector(normal, -.0055), normal); open.add(socket); sockets.push(socket);
     const ball = new THREE.Mesh(sphere, eye); ball.scale.set(.0155, .016, .009); socket.add(ball);
@@ -120,23 +127,16 @@ export function createTrainCat(colors: Companion['colors']) {
       arc.rotateZ(Math.PI); smile.add(arc);
     }
   }
-  // Whiskers fan out from the muzzle pads.
-  const whiskerPoints: number[] = [];
-  for (const side of [-1, 1]) {
-    const { point } = at(.055, -.024, side * .012, .25, .05, side);
-    for (let i = 0; i < 3; i++) {
-      const a = (i - 1) * .16;
-      whiskerPoints.push(point.x, point.y, point.z, point.x + .022 - Math.abs(a) * .04, point.y + a * .14 - .004, point.z + side * .048);
-    }
-  }
-  const whiskerGeometry = add(new THREE.BufferGeometry());
-  whiskerGeometry.setAttribute('position', new THREE.Float32BufferAttribute(whiskerPoints, 3));
-  const whiskerMaterial = new THREE.LineBasicMaterial({ color: '#f6f2e9', transparent: true, opacity: .6 }); materials.push(whiskerMaterial);
-  head.add(new THREE.LineSegments(whiskerGeometry, whiskerMaterial));
 
   // Collar with a small bell under the chin.
   const ring = new THREE.Mesh(add(new THREE.TorusGeometry(.064, .008, 10, 40)), collarMat);
   ring.position.set(.11, .085, .02); ring.rotation.set(0, Math.PI / 2, .55); group.add(ring);
+  // A little sewn-in label on the rump, as on any stuffed toy.
+  {
+    const { point, normal } = surfacePoint(bodySdf, new THREE.Vector3(-.08, .07, .02), new THREE.Vector3(-1, -.1, .55));
+    const tag = alignToSurface(new THREE.Mesh(add(new THREE.BoxGeometry(.026, .034, .002)), mat('#f4efe4', .9)), point.addScaledVector(normal, .001), normal);
+    tag.rotateZ(.25); group.add(tag);
+  }
   const bellMesh = new THREE.Mesh(sphere, bell); bellMesh.scale.setScalar(.013); bellMesh.position.set(.155, .04, .03); group.add(bellMesh);
 
   // Tail: a tapered tube whose spine is re-integrated each frame, so it curls and swishes smoothly.
@@ -156,7 +156,7 @@ export function createTrainCat(colors: Companion['colors']) {
     for (let s = 0; s < SIDES; s++) {
       const up = Math.cos(s / SIDES * Math.PI * 2);
       color.copy(fur).lerp(back, smooth(up, -.2, .8) * .35 + smooth(Math.sin(t * 34), .3, .9) * .35 + smooth(t, .85, 1) * .4);
-      color.toArray(tailColors, (r * SIDES + s) * 3);
+      mottle(color, t * .38, up * .02, Math.sin(s / SIDES * Math.PI * 2) * .02).toArray(tailColors, (r * SIDES + s) * 3);
     }
   }
   tailGeometry.setIndex(index);
