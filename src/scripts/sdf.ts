@@ -101,7 +101,7 @@ export function surfacePoint(sdf: Sdf, origin: THREE.Vector3, dir: THREE.Vector3
 }
 
 /** Orients an object so its local +z follows `normal` and its local +x stays level. */
-export function alignToSurface(object: THREE.Object3D, point: THREE.Vector3, normal: THREE.Vector3) {
+export function alignToSurface<T extends THREE.Object3D>(object: T, point: THREE.Vector3, normal: THREE.Vector3) {
   const x = new THREE.Vector3(0, 1, 0).cross(normal);
   if (x.lengthSq() < 1e-6) x.set(1, 0, 0);
   x.normalize();

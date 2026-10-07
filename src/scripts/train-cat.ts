@@ -66,7 +66,7 @@ export function createTrainCat(colors: Companion['colors']) {
   }), body);
 
   // Head, with face details placed on its surface.
-  const head = new THREE.Group(); head.position.set(.15, .1, .02); group.add(head);
+  const head = new THREE.Group(); head.position.set(.15, .1, .02); head.rotation.order = 'YZX'; group.add(head);
   const headMesh = furMesh(sdfGeometry(headSdf, new THREE.Vector3(.01, -.005, 0), .11, 44, (p, n, out) => {
     tabby(p, n, out, -p.x * 70 + Math.abs(p.z) * 30);
     out.lerp(light, 1 - smooth(muzzle(p.x, p.y, p.z), -.002, .008));
@@ -87,12 +87,13 @@ export function createTrainCat(colors: Companion['colors']) {
   const closed = new THREE.Group(), open = new THREE.Group(); head.add(closed, open);
   const lidGeometry = add(new THREE.TorusGeometry(.012, .0028, 8, 16, Math.PI));
   const sphere = add(new THREE.SphereGeometry(1, 20, 14));
+  const sockets: THREE.Group[] = [];
   for (const side of [-1, 1]) {
     const { point, normal } = at(0, .008, 0, .8, .18, side * .52);
     // Sleeping: a soft downward arc. Awake: a glossy almond eye with a slit pupil and a glint.
     const lid = alignToSurface(new THREE.Mesh(lidGeometry, dark), point.clone().addScaledVector(normal, .001), normal);
     lid.rotateZ(Math.PI); closed.add(lid);
-    const socket = alignToSurface(new THREE.Group(), point.clone().addScaledVector(normal, -.0055), normal); open.add(socket);
+    const socket = alignToSurface(new THREE.Group(), point.clone().addScaledVector(normal, -.0055), normal); open.add(socket); sockets.push(socket);
     const ball = new THREE.Mesh(sphere, eye); ball.scale.set(.0155, .016, .009); socket.add(ball);
     const pupil = new THREE.Mesh(sphere, dark); pupil.scale.set(.0045, .012, .004); pupil.position.z = .0065; socket.add(pupil);
     const shine = new THREE.Mesh(sphere, glint); shine.scale.setScalar(.0028); shine.position.set(.004, .006, .009); socket.add(shine);
@@ -179,7 +180,19 @@ export function createTrainCat(colors: Companion['colors']) {
   shadow.rotation.x = -Math.PI / 2; shadow.position.set(0, .002, .04); shadow.renderOrder = 2; group.add(shadow);
 
   const targets = [bodyMesh, headMesh, tailMesh, ...ears];
-  let wake = 0, wakeTarget = 0, twitchAt = -10;
+  let wake = 0, wakeTarget = 0, twitchAt = -10, yaw = 0, pitch = 0;
+  const viewer = new THREE.Vector3();
+  /**
+   * While awake the cat keeps its eyes on the viewer, but every few seconds it
+   * glances out of the window or down at the table before looking back.
+   */
+  const glances = [[0, 0, 2.6], [.75, .12, 1.1], [0, 0, 2.2], [-.55, -.22, .9], [0, 0, 1.8], [.35, .3, .8]];
+  const cycle = glances.reduce((sum, g) => sum + g[2], 0);
+  const glance = (time: number) => {
+    let t = time % cycle;
+    for (const g of glances) { if (t < g[2]) return g; t -= g[2]; }
+    return glances[0];
+  };
   return {
     group,
     /** Whether a pointer ray hits the cat. */
@@ -187,15 +200,32 @@ export function createTrainCat(colors: Companion['colors']) {
     twitch(time: number) { if (time - twitchAt > 1.2) twitchAt = time; },
     setAwake(awake: boolean) { wakeTarget = awake ? 1 : 0; },
     get awake() { return wakeTarget === 1; },
-    update(time: number, dt: number, still: boolean) {
+    /** `camera` is the viewer's world position; the awake cat turns its head toward it. */
+    update(time: number, dt: number, still: boolean, camera?: THREE.Vector3) {
       wake = still ? wakeTarget : damp(wake, wakeTarget, 3.2, dt);
+      // An ear flick now and then, asleep or awake, so the cat never looks frozen.
+      if (!still && time - twitchAt > 6.5) twitchAt = time;
       const breathe = still ? 0 : Math.sin(time * 2.1) * (1 - wake);
       const twitch = still ? 0 : Math.max(0, 1 - (time - twitchAt) / .6);
       const flick = Math.sin((time - twitchAt) * 22) * twitch;
       body.scale.set(1 + wake * .03, 1 + breathe * .03 + wake * .08, 1 + breathe * .012);
       // Asleep: head tucked down on the paws. Awake: lifted and turned to the viewer.
       head.position.set(.15 + wake * .02, .1 + wake * .075 + breathe * .002, .02 + wake * .01);
-      head.rotation.set(wake * -.12, wake * .4, -.28 + wake * .48);
+      let lookYaw = .4, lookPitch = .2;
+      if (camera) {
+        group.updateWorldMatrix(true, false);
+        viewer.copy(camera); group.worldToLocal(viewer).sub(head.position);
+        lookYaw = THREE.MathUtils.clamp(Math.atan2(-viewer.z, viewer.x), -1.2, 1.2);
+        lookPitch = THREE.MathUtils.clamp(Math.atan2(viewer.y, Math.hypot(viewer.x, viewer.z)), -.4, .5);
+      }
+      if (!still) { const [gy, gp] = glance(time); lookYaw += gy; lookPitch += gp; }
+      yaw = still ? lookYaw : damp(yaw, lookYaw, 5, dt); pitch = still ? lookPitch : damp(pitch, lookPitch, 5, dt);
+      // A slow head tilt keeps the awake pose from looking frozen.
+      const tilt = still ? 0 : Math.sin(time * .9) * .07;
+      head.rotation.set(wake * (tilt - .06), wake * yaw, -.28 * (1 - wake) + wake * pitch);
+      // Blink every few seconds while awake.
+      const blink = still ? 1 : 1 - Math.max(0, 1 - Math.abs((time % 3.7) - 3.55) / .09);
+      sockets.forEach(socket => { socket.scale.y = Math.max(.08, blink); });
       ears.forEach((ear, i) => { ear.rotation.z = .1 - wake * .08 + (i ? flick : -flick) * .3; });
       closed.visible = wake < .5; open.visible = wake >= .5;
       const swish = still ? 0 : Math.sin(time * (1.1 + wake * 2.2)) * (.06 + wake * .28) + flick * .35;

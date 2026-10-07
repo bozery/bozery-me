@@ -431,7 +431,7 @@ export function createTrainWorld(host: HTMLElement) {
   function render(dt:number) {
     elapsed+=dt;
     rig.update(elapsed,dt);
-    cat.update(elapsed,dt,reduced.matches);
+    cat.update(elapsed,dt,reduced.matches,camera.position);
     if(book.update(elapsed,reduced.matches))renderer.shadowMap.needsUpdate=true;
     cloudUniforms.time.value=elapsed;
     for(let i=0;i<masts.length;i++)masts[i].position.z=((i*22+elapsed*2.3)%154)-120;

@@ -8,8 +8,7 @@ export const companion = {
   heading: '特别鸣谢',
   /** Each string is one paragraph on the card. */
   message: [
-    '谢谢你一直陪在我身边。',
-    '这一程，有你在旁边打盹，就很安心。',
+    '在无限的旅程中仍有猫陪伴。',
   ],
   /** Fur, back stripes, belly, inner-ear/nose, eye and collar colours. */
   colors: {
