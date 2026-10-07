@@ -4,16 +4,17 @@
  */
 export const companion = {
   /** How the card addresses him. Leave empty to show only the heading. */
-  name: '',
+  name: 'aqp',
   heading: '特别鸣谢',
   /** Each string is one paragraph on the card. */
   message: [
     '谢谢你一直陪在我身边。',
     '这一程，有你在旁边打盹，就很安心。',
   ],
-  /** Fur, belly, inner-ear/nose, eye and collar colours. */
+  /** Fur, back stripes, belly, inner-ear/nose, eye and collar colours. */
   colors: {
-    fur: '#9aa3a6',
+    fur: '#8e979a',
+    stripes: '#596367',
     belly: '#f1efe8',
     accent: '#e7b2ad',
     eyes: '#7fb8a4',
