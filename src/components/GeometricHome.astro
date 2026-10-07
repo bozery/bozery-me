@@ -1,4 +1,5 @@
 ---
+import Ticket from './Ticket.astro';
 import { getImage } from 'astro:assets';
 import referenceSheet from '../assets/home/bozery-reference-sheet.png';
 import GeometricLayout from '../layouts/GeometricLayout.astro';
@@ -14,10 +15,7 @@ const portrait = await getImage({ src: referenceSheet, width: 2048, format: 'web
       </svg>
       <h1 id="geo-home-title">BOZERY<span class="geo-title-stop" aria-hidden="true">.</span></h1>
       <p class="geo-home-tagline">{profile.aboutTitle}</p>
-      <a class="geo-home-link" href="/blog/">
-        <span class="geo-link-title">翻开随笔</span>
-        <span class="geo-link-arrow" aria-hidden="true">↗</span>
-      </a>
+      <Ticket class="geo-home-link" href="/blog/" variant="primary" icon="arrow-right">翻开随笔</Ticket>
     </div>
   </section>
 </GeometricLayout>

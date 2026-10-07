@@ -1,4 +1,6 @@
 ---
+import Icon from '../../components/Icon.astro';
+import Ticket from '../../components/Ticket.astro';
 import { getCollection } from 'astro:content';
 import GeometricLayout from '../../layouts/GeometricLayout.astro';
 import PageHeading from '../../components/PageHeading.astro';
@@ -21,11 +23,11 @@ const excerpt = (body: string | undefined, description: string) => {
           <div class="geo-note-meta"><time datetime={post.data.pubDate.toISOString()}>{monthDay.format(post.data.pubDate)}</time><span>{post.data.category}</span></div>
           <h3>{post.data.title}</h3>
           <p>{excerpt(post.body, post.data.description)}</p>
-          <span class="geo-note-arrow" aria-hidden="true">↗</span>
+          <Icon class="geo-note-arrow" name="arrow-up-right" />
         </a>)}</div>
       </section>)}
       {!posts.length && <p class="geo-notes-empty">还没有随笔。</p>}
     </div>
-    <div class="geo-notes-bottom" data-geo-enter><a href="/rss.xml" data-astro-reload>RSS 订阅 <span aria-hidden="true">↗</span></a></div>
+    <div class="geo-notes-bottom" data-geo-enter><Ticket href="/rss.xml" size="sm" icon="arrow-up-right" data-astro-reload>RSS 订阅</Ticket></div>
   </div>
 </GeometricLayout>

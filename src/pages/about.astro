@@ -1,4 +1,6 @@
 ---
+import Icon from '../components/Icon.astro';
+import Ticket from '../components/Ticket.astro';
 import GeometricLayout from '../layouts/GeometricLayout.astro';
 import PageHeading from '../components/PageHeading.astro';
 import CompanionNote from '../components/CompanionNote.astro';
@@ -16,8 +18,8 @@ const paragraphs=profile.paragraphs;
       <h2>{profile.contactHeading}</h2>
       <div class="geo-contact-list">{profile.contacts.map(contact=>{
         const url=publicUrl(contact.url,true);
-        const content=<><span class="geo-contact-icon" aria-hidden="true">{contact.icon==='x'?<XIcon/>:contact.icon==='qq'?<QQIcon/>:<span>↗</span>}</span><span><span class="geo-contact-label">{contact.label}</span><span class="geo-contact-value">{contact.value}</span></span><span class="geo-contact-action" aria-hidden="true">{url?'↗':'复制'}</span></>;
-        return url?<a href={url} target={url.startsWith('http')?'_blank':undefined} rel={url.startsWith('http')?'noopener noreferrer':undefined}>{content}</a>:<button type="button" data-copy={contact.value} data-platform={contact.label} aria-label={`复制 ${contact.label}：${contact.value}`}>{content}</button>;
+        const content=<><span class="geo-contact-icon" aria-hidden="true">{contact.icon==='x'?<XIcon/>:contact.icon==='qq'?<QQIcon/>:<Icon name="arrow-up-right" />}</span><span><span class="geo-contact-label">{contact.label}</span><span class="geo-contact-value">{contact.value}</span></span><Ticket as="span" class="geo-contact-action" size="sm" icon={url?'arrow-up-right':'copy'} aria-hidden="true">{url?'打开':'复制'}</Ticket></>;
+        return url?<a class="ticket-host" href={url} target={url.startsWith('http')?'_blank':undefined} rel={url.startsWith('http')?'noopener noreferrer':undefined}>{content}</a>:<button class="ticket-host" type="button" data-copy={contact.value} data-platform={contact.label} aria-label={`复制 ${contact.label}：${contact.value}`}>{content}</button>;
       })}</div>
       <p class="contact-status" role="status" aria-live="polite"></p>
     </contact-links>}
