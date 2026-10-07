@@ -1,4 +1,6 @@
 ---
+import Icon from '../components/Icon.astro';
+import Ticket from '../components/Ticket.astro';
 import { Image } from 'astro:assets';
 import GeometricLayout from '../layouts/GeometricLayout.astro';
 import PageHeading from '../components/PageHeading.astro';
@@ -16,9 +18,9 @@ import { gallery } from '../data/gallery';
         <figcaption><div class="art-title-row"><span class="art-title">{art.title}</span>{art.kindLabel&&<span class="art-kind">{art.kindLabel}</span>}</div>{art.artist&&<p class="art-credit">画师：{art.artistUrl?<a href={art.artistUrl} target="_blank" rel="noopener noreferrer">{art.artist}</a>:art.artist}</p>}</figcaption>
       </figure>)}</div>
       {gallery.map(art=><dialog class="art-dialog" data-art-dialog={art.id} aria-labelledby={`geo-title-${art.id}`}>
-        <div class="art-dialog-top"><h2 id={`geo-title-${art.id}`}>{art.title}</h2><button class="dialog-close" type="button" aria-label="关闭大图">×</button></div>
+        <div class="art-dialog-top"><h2 id={`geo-title-${art.id}`}>{art.title}</h2><Ticket class="dialog-close" icon="close" aria-label="关闭大图" /></div>
         <div class="art-dialog-image"><img data-src={art.image.src} alt={art.alt} width={art.image.width} height={art.image.height}/></div>
-        {(art.artist||art.kindLabel||art.date||art.description)&&<div class="art-details"><dl>{art.kindLabel&&<div><dt>类型</dt><dd>{art.kindLabel}</dd></div>}{art.artist&&<div><dt>画师</dt><dd>{art.artistUrl?<a href={art.artistUrl} target="_blank" rel="noopener noreferrer">{art.artist}<span aria-hidden="true"> ↗</span></a>:art.artist}</dd></div>}{art.date&&<div><dt>日期</dt><dd>{art.date}</dd></div>}</dl>{art.description&&<p>{art.description}</p>}</div>}
+        {(art.artist||art.kindLabel||art.date||art.description)&&<div class="art-details"><dl>{art.kindLabel&&<div><dt>类型</dt><dd>{art.kindLabel}</dd></div>}{art.artist&&<div><dt>画师</dt><dd>{art.artistUrl?<a href={art.artistUrl} target="_blank" rel="noopener noreferrer">{art.artist}<Icon class="art-link-icon" name="arrow-up-right" /></a>:art.artist}</dd></div>}{art.date&&<div><dt>日期</dt><dd>{art.date}</dd></div>}</dl>{art.description&&<p>{art.description}</p>}</div>}
       </dialog>)}
     </art-gallery>
   </div>

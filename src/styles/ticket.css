@@ -1,0 +1,37 @@
+/* Line icons shared by every control. */
+.icon{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+
+/* A larger clickable area (e.g. a list row) marked .ticket-host animates its ticket on hover. */
+
+/*
+ * Train-ticket controls: half-round punches at both ends (a mask, so the scene
+ * shows through them) and a dashed tear line before the icon stub.
+ */
+.ticket{
+  --notch:6px;--paper:#f6ecd5;--paper-edge:#fbf5e6;--ink:#5b3f27;--tear:#c6a374;--rim:#e3cfa6;
+  position:relative;display:inline-flex;align-items:center;gap:12px;min-height:44px;padding:0 18px;
+  border:0;border-radius:5px;background:linear-gradient(var(--paper-edge),var(--paper));box-shadow:inset 0 0 0 1px var(--rim);
+  color:var(--ink);font:inherit;font-size:14px;line-height:1;letter-spacing:.05em;text-decoration:none;white-space:nowrap;cursor:pointer;
+  -webkit-mask:radial-gradient(circle var(--notch) at 0 50%,#0000 97%,#000) left/51% 100% no-repeat,radial-gradient(circle var(--notch) at 100% 50%,#0000 97%,#000) right/51% 100% no-repeat;
+  mask:radial-gradient(circle var(--notch) at 0 50%,#0000 97%,#000) left/51% 100% no-repeat,radial-gradient(circle var(--notch) at 100% 50%,#0000 97%,#000) right/51% 100% no-repeat;
+  transition:transform .25s cubic-bezier(.2,.8,.2,1),filter .25s;
+}
+/* Beats `.geometric-site a{color:inherit}`. */
+.ticket.ticket{color:var(--ink);}
+.ticket--primary{--paper:#2c7570;--paper-edge:#368781;--ink:#f6f4e8;--tear:#a3d3c9;--rim:#25645f;}
+.ticket--sm{--notch:5px;gap:10px;min-height:36px;padding:0 14px;font-size:13px;}
+.ticket--sm .icon{width:14px;height:14px;}
+.ticket-stub{display:flex;align-items:center;align-self:stretch;margin-block:9px;padding-left:12px;border-left:1.5px dashed var(--tear);}
+.ticket--sm .ticket-stub{margin-block:8px;padding-left:10px;}
+.ticket--lead .ticket-stub{padding:0 12px 0 0;border-left:0;border-right:1.5px dashed var(--tear);}
+.ticket--icon{width:44px;padding:0;justify-content:center;}
+.ticket--icon.ticket--sm{width:36px;}
+.ticket--icon .ticket-stub{margin:0;padding:0;border:0;}
+.ticket .icon{transition:transform .25s cubic-bezier(.2,.8,.2,1);}
+.ticket:hover,.ticket-host:hover .ticket{transform:translateY(-1px) rotate(-1deg);filter:brightness(1.03);}
+.ticket:hover .icon,.ticket-host:hover .ticket .icon{transform:translateX(3px);}
+.ticket--lead:hover .icon{transform:translateX(-3px);}
+.ticket--icon:hover .icon{transform:rotate(90deg);}
+.ticket:active{transform:translateY(0) rotate(0);}
+.ticket:focus-visible{outline:none;box-shadow:inset 0 0 0 2px var(--ink);}
+@media(prefers-reduced-motion:reduce){.ticket,.ticket .icon{transition:none;}}

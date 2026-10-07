@@ -1,0 +1,29 @@
+---
+import Icon, { type IconName } from './Icon.astro';
+import '../styles/ticket.css';
+/**
+ * A train-ticket control: notched at both ends, with a dashed tear line between
+ * the label and its icon. Renders a link with `href`, a button otherwise, or a
+ * plain span (`as="span"`) when it decorates a larger clickable row.
+ */
+interface Props {
+  href?: string;
+  as?: 'a' | 'button' | 'span';
+  /** primary: teal ticket; plain: paper ticket. */
+  variant?: 'primary' | 'plain';
+  size?: 'md' | 'sm';
+  icon?: IconName;
+  /** Where the stub with the icon sits. */
+  iconAt?: 'start' | 'end';
+  class?: string;
+  [attr: string]: unknown;
+}
+const { href, as, variant = 'plain', size = 'md', icon, iconAt = 'end', class: className, ...attrs } = Astro.props;
+const Tag = as ?? (href ? 'a' : 'button');
+const label = Astro.slots.has('default');
+---
+<Tag href={href} type={Tag === 'button' ? 'button' : undefined} class:list={['ticket', `ticket--${variant}`, `ticket--${size}`, { 'ticket--icon': !label, 'ticket--lead': iconAt === 'start' }, className]} {...attrs}>
+  {icon && iconAt === 'start' && <span class="ticket-stub"><Icon name={icon} /></span>}
+  {label && <span class="ticket-label"><slot /></span>}
+  {icon && iconAt === 'end' && <span class="ticket-stub"><Icon name={icon} /></span>}
+</Tag>
