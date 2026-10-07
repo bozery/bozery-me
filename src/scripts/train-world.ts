@@ -3,6 +3,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { createTrainBook } from './train-book';
+import { mountainGeometry, cumulusGeometry, leafGeometry, contactShadowTexture, contactShadows } from './train-detail';
 
 export type TrainView = 'home' | 'notes' | 'article' | 'gallery' | 'about';
 
@@ -51,7 +52,7 @@ export function createTrainWorld(host: HTMLElement) {
   const sun = new THREE.DirectionalLight('#fff4de', 2.6);
   sun.position.set(14, 16, -9); sun.target.position.set(0,0,-2);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(1024,1024);
+  sun.shadow.mapSize.set(2048,2048);
   Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 12, bottom: -12, near: 1, far: 48 });
   sun.shadow.bias = -.0003; sun.shadow.normalBias = .025;
   scene.add(sun, sun.target);
@@ -60,14 +61,12 @@ export function createTrainWorld(host: HTMLElement) {
   const geometries: THREE.BufferGeometry[] = [];
   const textures: THREE.Texture[] = [];
   const material = (color: string, roughness=.65, metalness=0) => {
-    // Matte walls, cloth and wood need diffuse light, not per-pixel PBR reflections.
-    // Keep the physical material on metal and glazed accents where it is visible.
-    const m = metalness>.2||roughness<.4
-      ? new THREE.MeshStandardMaterial({color,roughness,metalness})
-      : new THREE.MeshLambertMaterial({color});
+    // Physical shading everywhere: soft highlights from the room environment give
+    // walls, cloth and wood their form instead of flat diffuse fills.
+    const m = new THREE.MeshStandardMaterial({color,roughness,metalness});
     materials.push(m);return m;
   };
-  const ivory = material('#e7e8db'), trim = material('#f3f2e6',.34), gasket = material('#506768',.65);
+  const ivory = material('#e7e8db',.78), trim = material('#f3f2e6',.34), gasket = material('#506768',.65);
   const floorMat = material('#b9b7a6', .84), metal = material('#baccc8', .3,.65);
   const fabric = material('#438f90', .95), fabricLight = material('#74b1ac', .98);
   const seam = material('#337b7d'), wood = material('#e0d0ad', .6), dark = material('#526866');
@@ -83,12 +82,12 @@ export function createTrainWorld(host: HTMLElement) {
   const lamp = material('#fff7d6',.25); lamp.emissive.set('#fff0c0'); lamp.emissiveIntensity=.7;
   const carriage = new THREE.Group(); scene.add(carriage);
   function box(w:number,h:number,d:number,m:THREE.Material,x:number,y:number,z:number,r=.04,parent:THREE.Object3D=carriage) {
-    const g = r ? new RoundedBoxGeometry(w,h,d,1,Math.min(r,w/3,h/3,d/3)) : new THREE.BoxGeometry(w,h,d);
+    const g = r ? new RoundedBoxGeometry(w,h,d,3,Math.min(r,w/3,h/3,d/3)) : new THREE.BoxGeometry(w,h,d);
     geometries.push(g); const mesh = new THREE.Mesh(g,m); mesh.position.set(x,y,z);
     mesh.castShadow=true; mesh.receiveShadow=true; parent.add(mesh); return mesh;
   }
   function cylinder(radius:number,height:number,m:THREE.Material,x:number,y:number,z:number,parent:THREE.Object3D=carriage) {
-    const g = new THREE.CylinderGeometry(radius,radius,height,16); geometries.push(g);
+    const g = new THREE.CylinderGeometry(radius,radius,height,32); geometries.push(g);
     const mesh=new THREE.Mesh(g,m); mesh.position.set(x,y,z); mesh.castShadow=true; mesh.receiveShadow=true; parent.add(mesh); return mesh;
   }
   function wallShape(shape: THREE.Shape, x: number, m: THREE.Material, depth=.12) {
@@ -127,6 +126,9 @@ export function createTrainWorld(host: HTMLElement) {
       const glassGeo=new THREE.ShapeGeometry(glassShape); geometries.push(glassGeo);
       const glass=new THREE.Mesh(glassGeo,glassMat); glass.rotation.y=Math.PI/2; glass.position.x=side*3.075; carriage.add(glass);
       box(.25,.075,4.0,trim,side*2.91,1.065,z,.03);
+      // A rolled blind under each window head, with a small pull tab.
+      const roll=cylinder(.055,3.7,ivory,side*2.82,3.09,z);roll.rotation.x=Math.PI/2;
+      box(.014,.08,.1,wood,side*2.8,3.0,z,.005);
     }
     box(.06,.028,length,fabricLight,side*2.95,.79,center,.01);
     box(.045,.12,length,metal,side*2.96,.17,center,.01);
@@ -140,6 +142,9 @@ export function createTrainWorld(host: HTMLElement) {
     const cushion=box(1.55,1.02,.19,fabricLight,0,1.18,.32,.09,seat); cushion.rotation.x=-.1;
     box(.013,.77,.011,seam,0,1.15,.217,.003,seat);
     box(1.23,.24,.09,fabricLight,0,1.57,.205,.035,seat);
+    // Piping along the cushion edges reads as upholstery rather than blocks.
+    box(1.5,.016,.016,seam,0,.735,-.455,.006,seat);
+    const piping=box(1.5,.016,.016,seam,0,1.69,.27,.006,seat);piping.rotation.x=-.1;
     for (const side of [-1,1]) {
       box(.10,.09,.78,wood,side*.86,.89,.04,.045,seat);
       box(.035,.34,.05,metal,side*.86,.69,.32,.01,seat);
@@ -213,11 +218,21 @@ export function createTrainWorld(host: HTMLElement) {
   cylinder(.18,.012,lamp,2.68,1.444,7.72);
   const plantPot=material('#b4c6b1'),leafMat=material('#628e79',.9);
   cylinder(.1,.16,plantPot,2.49,1.14,7.12);
-  const leafGeo=new THREE.SphereGeometry(1,12,8);geometries.push(leafGeo);
-  for(let i=0;i<7;i++){
-    const leaf=new THREE.Mesh(leafGeo,leafMat),angle=i*2.4;
-    leaf.scale.set(.045,.11,.012);leaf.position.set(2.49+Math.cos(angle)*.075,1.29+(i%3)*.04,7.12+Math.sin(angle)*.075);leaf.rotation.set(.5*Math.cos(angle),angle,.6*Math.sin(angle));leaf.castShadow=true;carriage.add(leaf);
+  leafMat.side=THREE.DoubleSide;
+  const leafGeo=leafGeometry();geometries.push(leafGeo);
+  for(let i=0;i<11;i++){
+    const leaf=new THREE.Mesh(leafGeo,leafMat),angle=i*2.4,tilt=.35+(i%3)*.18;
+    const size=.16+(i%4)*.025;leaf.scale.set(size*.7,size,size);
+    leaf.position.set(2.49,1.21,7.12);leaf.rotation.set(0,-angle,0);leaf.rotateX(-tilt);leaf.castShadow=true;carriage.add(leaf);
   }
+  // Soft contact shadows ground the furniture on the floor.
+  const shadowTexture=contactShadowTexture();textures.push(shadowTexture);
+  const floorShadows=contactShadows([
+    ...[-7.3,1.0,8.4].flatMap(z=>[{x:2.02,z:z+.05,w:2.1,d:1.5},{x:-2.02,z:z+.05,w:2.1,d:1.5}]),
+    ...[-3.45,4.95].flatMap(z=>[{x:2.02,z:z-.05,w:2.1,d:1.5},{x:z===-3.45?-1.48:-2.02,z:z-.05,w:2.1,d:1.5}]),
+    ...[-5.4,-1.2,3.0,7.4].map(z=>({x:1.85,z,w:1.1,d:.95})),
+  ],-.004,shadowTexture);
+  geometries.push(floorShadows.geometry);materials.push(floorShadows.material);carriage.add(floorShadows);
   // Both ends are closed, including the rear visible from the about camera.
   for(const [z,facing] of [[front,0],[rear,Math.PI]]){
     const end=new THREE.Group();end.position.z=z;end.rotation.y=facing;carriage.add(end);
@@ -281,8 +296,8 @@ export function createTrainWorld(host: HTMLElement) {
 
   // Rounded cloud banks give the foreground a readable silhouette and parallax.
   // They share geometry and a single draw call; the distant layer stays procedural.
-  const puffGeo=new THREE.SphereGeometry(1,16,10);geometries.push(puffGeo);
-  const puffMaterial=material('#d7e8eb',1);
+  const puffGeo=cumulusGeometry();geometries.push(puffGeo);
+  const puffMaterial=material('#dcebed',1);puffMaterial.emissive.set('#9cc2cb');puffMaterial.emissiveIntensity=.22;
   const puffCount=150;
   const puffs=new THREE.InstancedMesh(puffGeo,puffMaterial,puffCount);scene.add(puffs);
   puffs.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -315,8 +330,8 @@ export function createTrainWorld(host: HTMLElement) {
     if(i%7===0) { cylinder(.58,24,bridgeMat,mid.x,mid.y-12.3,mid.z,viaduct); box(3.0,.6,1.0,bridgeMat,mid.x,mid.y-.7,mid.z,.05,viaduct).rotation.y=angle; }
   }
   const mountainMat=material('#98c4cd',.95);
-  const mountainGeo=new THREE.ConeGeometry(28,34,5); geometries.push(mountainGeo);
   for(const [x,z,scale] of [[108,-155,1],[160,-240,1.3],[60,-285,.8]]) {
+    const mountainGeo=mountainGeometry(28,34,x); geometries.push(mountainGeo);
     const peak=new THREE.Mesh(mountainGeo,mountainMat); peak.position.set(x,-10,z); peak.scale.set(scale,scale*.8,scale); peak.rotation.y=x; scene.add(peak);
   }
   const passing=new THREE.Group(); scene.add(passing);
@@ -388,7 +403,7 @@ export function createTrainWorld(host: HTMLElement) {
   function sizeCanvas() {
     const w=innerWidth,h=innerHeight;
     // Bound the 3D pixel cost on high-DPI and large screens. DOM text stays native.
-    renderer.setPixelRatio(qualityScale*Math.min(devicePixelRatio,1.25,Math.sqrt(1_800_000/(w*h))));
+    renderer.setPixelRatio(qualityScale*Math.min(devicePixelRatio,1.5,Math.sqrt(2_600_000/(w*h))));
     renderer.setSize(w,h,false);
   }
   function resize() {
