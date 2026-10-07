@@ -6,7 +6,8 @@ import { mountainGeometry, cumulusGeometry, leafGeometry, contactShadowTexture, 
 import { createKit } from './train-kit';
 import { createCameraRig } from './train-camera';
 import { createTrainCat } from './train-cat';
-import { companion } from '../data/companion';
+import { createTrainDog } from './train-dog';
+import { buddy, companion } from '../data/companion';
 import { buildBench } from './train-seat';
 import { floorTexture, runnerTexture, woodTexture, wallTexture } from './train-textures';
 
@@ -233,6 +234,10 @@ export function createTrainWorld(host: HTMLElement) {
   // A cat naps on the rear table; it belongs to the About page's thank-you note.
   const cat=createTrainCat(companion.colors);
   cat.group.position.set(1.62,1.068,7.45);cat.group.rotation.y=Math.PI-.4;cat.group.scale.setScalar(1.25);scene.add(cat.group);
+  // Its stuffed beagle friend lies beside it, a little further along the table.
+  const dog=createTrainDog(buddy.colors);
+  dog.group.position.set(1.84,1.068,7.12);dog.group.rotation.y=Math.PI-.62;dog.group.scale.setScalar(1.25);scene.add(dog.group);
+  const catHead=new THREE.Vector3();
   // Both ends are closed, including the rear visible from the about camera.
   for(const [z,facing] of [[front,0],[rear,Math.PI]]){
     const end=new THREE.Group();end.position.z=z;end.rotation.y=facing;carriage.add(end);
@@ -392,28 +397,33 @@ export function createTrainWorld(host: HTMLElement) {
     const dest=framing(next);
     if(instant)rig.retarget(dest.position,dest.look);else rig.travel(dest.position,dest.look,elapsed);
     book.setReading(next==='notes'||next==='article',elapsed);
-    if(next!=='about'){setHover(false);clearTimeout(sleepTimer);cat.setAwake(false);}
+    if(next!=='about'){setHover(null);clearTimeout(sleepTimer);cat.setAwake(false);}
     if(next==='gallery')loadWallArt();
     if(reduced.matches)render(0);
   }
   // The canvas ignores pointer events, so hover and clicks on the cat are hit-tested from the window.
   const raycaster=new THREE.Raycaster(),pointerNdc=new THREE.Vector2();
-  let hovering=false,sleepTimer:ReturnType<typeof setTimeout>|undefined;
+  let hovering:'cat'|'dog'|null=null,sleepTimer:ReturnType<typeof setTimeout>|undefined;
   const blocked=(target:EventTarget|null)=>target instanceof Element&&!!target.closest('a,button,input,textarea,select,dialog,[data-companion-card]');
-  function catUnder(event:PointerEvent|MouseEvent){
-    if(view!=='about'||blocked(event.target))return false;
+  function petUnder(event:PointerEvent|MouseEvent){
+    if(view!=='about'||blocked(event.target))return null;
     pointerNdc.set(event.clientX/innerWidth*2-1,-(event.clientY/innerHeight)*2+1);
-    raycaster.setFromCamera(pointerNdc,camera);return cat.hit(raycaster);
+    raycaster.setFromCamera(pointerNdc,camera);return cat.hit(raycaster)?'cat':dog.hit(raycaster)?'dog':null;
   }
-  function setHover(next:boolean){if(next===hovering)return;hovering=next;document.documentElement.classList.toggle('companion-hover',next);if(next)cat.twitch(elapsed);}
+  function setHover(next:'cat'|'dog'|null){if(next===hovering)return;hovering=next;document.documentElement.classList.toggle('companion-hover',!!next);if(next==='cat')cat.twitch(elapsed);if(next==='dog')dog.twitch(elapsed);}
   function wakeCompanion(open=true){
     clearTimeout(sleepTimer);
-    if(open){cat.setAwake(true);dispatchEvent(new CustomEvent('bozery:companion',{detail:{open:true}}));}
+    if(open){cat.setAwake(true);dog.cheer(elapsed);dispatchEvent(new CustomEvent('bozery:companion',{detail:{open:true}}));}
     else sleepTimer=setTimeout(()=>cat.setAwake(false),1600);
     if(reduced.matches)render(0);
   }
-  const onPointerMove=(event:PointerEvent)=>{if(event.pointerType==='mouse')setHover(catUnder(event));};
-  const onClick=(event:MouseEvent)=>{if(catUnder(event))wakeCompanion(true);};
+  const onPointerMove=(event:PointerEvent)=>{if(event.pointerType==='mouse')setHover(petUnder(event));};
+  const onClick=(event:MouseEvent)=>{
+    const hit=petUnder(event);
+    if(hit==='cat')wakeCompanion(true);
+    // The dog just cheers up and nudges the cat's ears.
+    else if(hit==='dog'){dog.cheer(elapsed);cat.twitch(elapsed);if(reduced.matches)render(0);}
+  };
   const onCardClosed=()=>wakeCompanion(false);
   addEventListener('pointermove',onPointerMove,{passive:true});addEventListener('click',onClick);addEventListener('bozery:companion-closed',onCardClosed);
   function sizeCanvas() {
@@ -432,6 +442,7 @@ export function createTrainWorld(host: HTMLElement) {
     elapsed+=dt;
     rig.update(elapsed,dt);
     cat.update(elapsed,dt,reduced.matches,camera.position);
+    dog.update(elapsed,dt,reduced.matches,camera.position,cat.group.localToWorld(catHead.set(.15,.15,.02)));
     if(book.update(elapsed,reduced.matches))renderer.shadowMap.needsUpdate=true;
     cloudUniforms.time.value=elapsed;
     for(let i=0;i<masts.length;i++)masts[i].position.z=((i*22+elapsed*2.3)%154)-120;
@@ -478,7 +489,7 @@ export function createTrainWorld(host: HTMLElement) {
     dispose(){
       disposed=true;cancelAnimationFrame(frame);removeEventListener('resize',resize);document.removeEventListener('visibilitychange',visibility);reduced.removeEventListener('change',motion);
       canvas.removeEventListener('webglcontextlost',contextLost);canvas.removeEventListener('webglcontextrestored',contextRestored);
-      geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());environment.dispose();rig.dispose();cat.dispose();
+      geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());environment.dispose();rig.dispose();cat.dispose();dog.dispose();
       removeEventListener('pointermove',onPointerMove);removeEventListener('click',onClick);removeEventListener('bozery:companion-closed',onCardClosed);clearTimeout(sleepTimer);
       renderer.dispose();
       puffs.dispose();

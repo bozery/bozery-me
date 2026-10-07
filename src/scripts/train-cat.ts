@@ -2,9 +2,8 @@ import * as THREE from 'three';
 import type { Companion } from '../data/companion';
 import { contactShadowTexture } from './train-detail';
 import { alignToSurface, blend, ellipsoid, roundCone, sdfGeometry, smax, smin, surfacePoint, type Sdf } from './sdf';
-import { mottle, plushMaterial, seam, stitch } from './train-plush';
+import { damp, mottle, plushMaterial, plushTube, seam, stitch } from './train-plush';
 
-const damp = (current: number, target: number, rate: number, dt: number) => THREE.MathUtils.lerp(current, target, 1 - Math.exp(-rate * dt));
 const smooth = THREE.MathUtils.smoothstep;
 
 // Body: a curled loaf with a rounded haunch, a soft chest and tucked paws. Local +x is the head direction.
@@ -139,56 +138,25 @@ export function createTrainCat(colors: Companion['colors']) {
   }
   const bellMesh = new THREE.Mesh(sphere, bell); bellMesh.scale.setScalar(.013); bellMesh.position.set(.155, .04, .03); group.add(bellMesh);
 
-  // Tail: a tapered tube whose spine is re-integrated each frame, so it curls and swishes smoothly.
-  const RINGS = 48, SIDES = 14;
-  // Rings bunch up toward the tip so its rounded cap stays smooth.
-  const ringT = (r: number) => 1 - (1 - r / (RINGS - 1)) ** 1.7;
-  const tailGeometry = add(new THREE.BufferGeometry());
-  const tailPositions = new Float32Array(RINGS * SIDES * 3), tailNormals = new Float32Array(RINGS * SIDES * 3), tailColors = new Float32Array(RINGS * SIDES * 3);
-  const index: number[] = [];
-  for (let r = 0; r < RINGS - 1; r++) for (let s = 0; s < SIDES; s++) {
-    const a = r * SIDES + s, b = r * SIDES + (s + 1) % SIDES, c = a + SIDES, d = b + SIDES;
-    index.push(a, b, c, b, d, c);
-  }
-  const color = new THREE.Color();
-  for (let r = 0; r < RINGS; r++) {
-    const t = ringT(r);
-    for (let s = 0; s < SIDES; s++) {
-      const up = Math.cos(s / SIDES * Math.PI * 2);
-      color.copy(fur).lerp(back, smooth(up, -.2, .8) * .35 + smooth(Math.sin(t * 34), .3, .9) * .35 + smooth(t, .85, 1) * .4);
-      mottle(color, t * .38, up * .02, Math.sin(s / SIDES * Math.PI * 2) * .02).toArray(tailColors, (r * SIDES + s) * 3);
-    }
-  }
-  tailGeometry.setIndex(index);
-  tailGeometry.setAttribute('position', new THREE.BufferAttribute(tailPositions, 3).setUsage(THREE.DynamicDrawUsage));
-  tailGeometry.setAttribute('normal', new THREE.BufferAttribute(tailNormals, 3).setUsage(THREE.DynamicDrawUsage));
-  tailGeometry.setAttribute('color', new THREE.BufferAttribute(tailColors, 3));
-  const tailMesh = furMesh(tailGeometry, group);
-  tailMesh.frustumCulled = false;
-  const radius = (t: number) => .023 * (1 - .3 * t) * Math.sqrt(Math.max(0, 1 - (Math.max(0, t - .92) / .08) ** 2)) + .0005;
-  // The spine follows an ellipse hugging the body, from the rump round the near side to the paws.
-  const spine = new THREE.Vector3(), ahead = new THREE.Vector3();
-  const along = (t: number, swish: number, out: THREE.Vector3) => {
-    const a = Math.PI * 1.1 - t * Math.PI * .88, reach = (.72 + .28 * smooth(t, 0, .22)) * (1 + swish * t * t);
-    return out.set(-.01 + Math.cos(a) * .2 * reach, 0, Math.sin(a) * .15 * reach);
-  };
+  // Tail: a tapered tube whose spine curls round the near side of the body toward the paws.
+  const tail = plushTube(furMaterial, {
+    radius: t => .023 * (1 - .3 * t) * Math.sqrt(Math.max(0, 1 - (Math.max(0, t - .92) / .08) ** 2)) + .0005,
+    color: (t, up, around, out) => {
+      out.copy(fur).lerp(back, smooth(up, -.2, .8) * .35 + smooth(Math.sin(t * 34), .3, .9) * .35 + smooth(t, .85, 1) * .4);
+      mottle(out, t * .38, up * .02, Math.sin(around) * .02);
+    },
+  });
+  geometries.push(tail.geometry); group.add(tail.mesh);
+  const tailMesh = tail.mesh;
   function shapeTail(swish: number, lift: number) {
-    for (let r = 0; r < RINGS; r++) {
-      const t = ringT(r), rad = radius(t);
-      const y = rad + .045 * (1 - smooth(t, 0, .28)) + lift * t * t * t;
-      along(t, swish, spine); along(t + .01, swish, ahead).sub(spine).normalize();
-      const x = spine.x, z = spine.z, tx = ahead.x, tz = ahead.z;
-      for (let s = 0; s < SIDES; s++) {
-        const a = s / SIDES * Math.PI * 2, ny = Math.cos(a), nh = Math.sin(a);
-        const nx = -tz * nh, nz = tx * nh, i = (r * SIDES + s) * 3;
-        tailNormals[i] = nx; tailNormals[i + 1] = ny; tailNormals[i + 2] = nz;
-        tailPositions[i] = x + nx * rad; tailPositions[i + 1] = y + ny * rad; tailPositions[i + 2] = z + nz * rad;
-      }
-    }
-    tailGeometry.attributes.position.needsUpdate = true; tailGeometry.attributes.normal.needsUpdate = true;
+    tail.shape((t, out) => {
+      const a = Math.PI * 1.1 - t * Math.PI * .88, reach = (.72 + .28 * smooth(t, 0, .22)) * (1 + swish * t * t);
+      const rad = .023 * (1 - .3 * t);
+      out.set(-.01 + Math.cos(a) * .2 * reach, rad + .045 * (1 - smooth(t, 0, .28)) + lift * t * t * t, Math.sin(a) * .15 * reach);
+    });
   }
   shapeTail(0, 0);
-  tailGeometry.computeBoundingSphere();
+  tail.geometry.computeBoundingSphere();
 
   // A soft contact shadow grounds the cat on the table.
   const shadowTexture = contactShadowTexture();
