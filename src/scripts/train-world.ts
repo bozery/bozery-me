@@ -4,6 +4,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { createTrainBook } from './train-book';
 import { mountainGeometry, cumulusGeometry, leafGeometry, contactShadowTexture, contactShadows, verticalGradient, curtainGeometry } from './train-detail';
 import { createKit } from './train-kit';
+import { createCameraRig } from './train-camera';
 import { buildBench } from './train-seat';
 import { floorTexture, runnerTexture, woodTexture, wallTexture } from './train-textures';
 
@@ -364,12 +365,7 @@ export function createTrainWorld(host: HTMLElement) {
   let view:TrainView=(host.dataset.view as TrainView)||'home';
   let elapsed=0,previous=0,frame=0,disposed=false,hidden=document.hidden,lost=false;
   let qualityScale=1,sampleDuration=0,sampleFrames=0,shadowUpdates=0;
-  const position=new THREE.Vector3(),look=new THREE.Vector3();
-  const startPosition=new THREE.Vector3(),startLook=new THREE.Vector3();
-  const orientation=new THREE.Quaternion(),startOrientation=new THREE.Quaternion(),targetOrientation=new THREE.Quaternion();
-  const orientationFor=(p:THREE.Vector3,l:THREE.Vector3)=>new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(p,l,new THREE.Vector3(0,1,0)));
-  let transitionStart=0,transitionDuration=0;
-  let targetPosition=new THREE.Vector3(),targetLook=new THREE.Vector3();
+  const rig=createCameraRig(camera,()=>reduced.matches);
   function framing(which:TrainView) {
     const mobile=innerWidth<701;
     switch(which){
@@ -379,18 +375,17 @@ export function createTrainWorld(host: HTMLElement) {
       case 'about':return {position:new THREE.Vector3(-.9,1.86,4.65),look:new THREE.Vector3(2.45,1.53,mobile?7.6:6.6)};
     }
   }
-  const initial=framing(view); position.copy(initial.position);look.copy(initial.look);
-  targetPosition.copy(position);targetLook.copy(look);
-  orientation.copy(orientationFor(position,look));targetOrientation.copy(orientation);
+  // Opening shot: start a little behind and above the framing, then glide in.
+  const initial=framing(view);
+  const back=initial.position.clone().sub(initial.look).setY(0).normalize();
+  rig.set(initial.position.clone().addScaledVector(back,1.1).add(new THREE.Vector3(0,.28,0)),initial.look);
+  rig.travel(initial.position,initial.look,0,2.8);
   function moveTo(next:TrainView,instant=false) {
     if(next===view && !instant)return;
     view=next;host.dataset.view=next;
     sampleDuration=0;sampleFrames=0;
-    const dest=framing(next); targetPosition=dest.position;targetLook=dest.look;
-    startOrientation.copy(orientation);targetOrientation.copy(orientationFor(targetPosition,targetLook));
-    startPosition.copy(position);startLook.copy(look);transitionStart=elapsed;
-    transitionDuration=instant||reduced.matches?0:2.1;
-    if(!transitionDuration){position.copy(targetPosition);look.copy(targetLook);orientation.copy(targetOrientation);}
+    const dest=framing(next);
+    if(instant)rig.retarget(dest.position,dest.look);else rig.travel(dest.position,dest.look,elapsed);
     book.setReading(next==='notes'||next==='article',elapsed);
     if(next==='gallery')loadWallArt();
     if(reduced.matches)render(0);
@@ -409,14 +404,7 @@ export function createTrainWorld(host: HTMLElement) {
   }
   function render(dt:number) {
     elapsed+=dt;
-    if(transitionDuration) {
-      const t=Math.min((elapsed-transitionStart)/transitionDuration,1);
-      const ease=t*t*t*(t*(t*6-15)+10);
-      position.lerpVectors(startPosition,targetPosition,ease);look.lerpVectors(startLook,targetLook,ease);
-      orientation.slerpQuaternions(startOrientation,targetOrientation,ease);
-      if(t===1)transitionDuration=0;
-    }
-    camera.position.copy(position);camera.quaternion.copy(orientation);
+    rig.update(elapsed,dt);
     if(book.update(elapsed,reduced.matches))renderer.shadowMap.needsUpdate=true;
     cloudUniforms.time.value=elapsed;
     for(let i=0;i<masts.length;i++)masts[i].position.z=((i*22+elapsed*2.3)%154)-120;
@@ -437,7 +425,7 @@ export function createTrainWorld(host: HTMLElement) {
     const interval=previous?now-previous:0;
     // Learn a conservative resolution while stationary. Ignore startup, navigation
     // and long browser stalls; never oscillate sharpness between adjacent pages.
-    if(elapsed>2&&!transitionDuration&&interval>0&&interval<100){
+    if(elapsed>2&&!rig.moving&&interval>0&&interval<100){
       sampleDuration+=interval;sampleFrames++;
       if(sampleDuration>=1500){
         if(sampleDuration/sampleFrames>19&&qualityScale>.7){qualityScale=Math.max(.7,qualityScale-.1);sizeCanvas();}
@@ -458,11 +446,11 @@ export function createTrainWorld(host: HTMLElement) {
   return {
     moveTo,
     // Read-only snapshots also make continuity and camera motion inspectable.
-    snapshot:()=>({view,elapsed,position:position.toArray(),look:look.toArray(),orientation:orientation.toArray(),moving:transitionDuration>0,book:book.snapshot(),artLoaded,drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles,qualityScale,pixelRatio:renderer.getPixelRatio(),shadowUpdates}),
+    snapshot:()=>({view,elapsed,...rig.state(),moving:rig.moving,book:book.snapshot(),artLoaded,drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles,qualityScale,pixelRatio:renderer.getPixelRatio(),shadowUpdates}),
     dispose(){
       disposed=true;cancelAnimationFrame(frame);removeEventListener('resize',resize);document.removeEventListener('visibilitychange',visibility);reduced.removeEventListener('change',motion);
       canvas.removeEventListener('webglcontextlost',contextLost);canvas.removeEventListener('webglcontextrestored',contextRestored);
-      geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());environment.dispose();renderer.dispose();
+      geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());environment.dispose();rig.dispose();renderer.dispose();
       puffs.dispose();
       book.dispose();
     }
