@@ -84,8 +84,13 @@ export function createTrainCat(colors: Companion['colors']) {
   const at = (ox: number, oy: number, oz: number, dx: number, dy: number, dz: number) =>
     surfacePoint(headSdf, new THREE.Vector3(ox, oy, oz), new THREE.Vector3(dx, dy, dz));
 
-  const closed = new THREE.Group(), open = new THREE.Group(); head.add(closed, open);
+  // Three faces: asleep, happy (smiling eyes, blush and a small ω mouth) and curious (open eyes).
+  const closed = new THREE.Group(), open = new THREE.Group(), happy = new THREE.Group(), smile = new THREE.Group();
+  head.add(closed, open, happy, smile);
   const lidGeometry = add(new THREE.TorusGeometry(.012, .0028, 8, 16, Math.PI));
+  const happyGeometry = add(new THREE.TorusGeometry(.0125, .0036, 8, 20, Math.PI));
+  const blushMaterial = new THREE.MeshBasicMaterial({ color: colors.accent, transparent: true, opacity: .6, depthWrite: false });
+  materials.push(blushMaterial);
   const sphere = add(new THREE.SphereGeometry(1, 20, 14));
   const sockets: THREE.Group[] = [];
   for (const side of [-1, 1]) {
@@ -93,6 +98,12 @@ export function createTrainCat(colors: Companion['colors']) {
     // Sleeping: a soft downward arc. Awake: a glossy almond eye with a slit pupil and a glint.
     const lid = alignToSurface(new THREE.Mesh(lidGeometry, dark), point.clone().addScaledVector(normal, .001), normal);
     lid.rotateZ(Math.PI); closed.add(lid);
+    // Happy: an upturned arc, like ^ ^.
+    const arc = alignToSurface(new THREE.Mesh(happyGeometry, dark), point.clone().addScaledVector(normal, .0015), normal);
+    arc.position.y -= .004; arc.scale.y = .85; happy.add(arc);
+    const cheek = at(0, -.01, 0, .62, -.32, side * .74);
+    const blush = alignToSurface(new THREE.Mesh(add(new THREE.CircleGeometry(.013, 24)), blushMaterial), cheek.point.addScaledVector(cheek.normal, .0012), cheek.normal);
+    blush.scale.set(1.5, 1, 1); smile.add(blush);
     const socket = alignToSurface(new THREE.Group(), point.clone().addScaledVector(normal, -.0055), normal); open.add(socket); sockets.push(socket);
     const ball = new THREE.Mesh(sphere, eye); ball.scale.set(.0155, .016, .009); socket.add(ball);
     const pupil = new THREE.Mesh(sphere, dark); pupil.scale.set(.0045, .012, .004); pupil.position.z = .0065; socket.add(pupil);
@@ -101,6 +112,13 @@ export function createTrainCat(colors: Companion['colors']) {
   {
     const { point, normal } = at(0, -.008, 0, 1, .02, 0);
     const tip = alignToSurface(new THREE.Mesh(sphere, nose), point, normal); tip.scale.set(.011, .007, .006); head.add(tip);
+    // ω mouth: two small arcs under the nose.
+    const mouthGeometry = add(new THREE.TorusGeometry(.0062, .0017, 6, 14, Math.PI));
+    for (const side of [-1, 1]) {
+      const m = at(0, -.022, side * .006, 1, -.05, 0);
+      const arc = alignToSurface(new THREE.Mesh(mouthGeometry, dark), m.point.addScaledVector(m.normal, .0012), m.normal);
+      arc.rotateZ(Math.PI); smile.add(arc);
+    }
   }
   // Whiskers fan out from the muzzle pads.
   const whiskerPoints: number[] = [];
@@ -218,7 +236,9 @@ export function createTrainCat(colors: Companion['colors']) {
         lookYaw = THREE.MathUtils.clamp(Math.atan2(-viewer.z, viewer.x), -1.2, 1.2);
         lookPitch = THREE.MathUtils.clamp(Math.atan2(viewer.y, Math.hypot(viewer.x, viewer.z)), -.4, .5);
       }
-      if (!still) { const [gy, gp] = glance(time); lookYaw += gy; lookPitch += gp; }
+      // Smiling while it looks at the viewer; wide-eyed while it glances around.
+      let curious = false;
+      if (!still) { const [gy, gp] = glance(time); lookYaw += gy; lookPitch += gp; curious = gy !== 0; }
       yaw = still ? lookYaw : damp(yaw, lookYaw, 5, dt); pitch = still ? lookPitch : damp(pitch, lookPitch, 5, dt);
       // A slow head tilt keeps the awake pose from looking frozen.
       const tilt = still ? 0 : Math.sin(time * .9) * .07;
@@ -227,7 +247,10 @@ export function createTrainCat(colors: Companion['colors']) {
       const blink = still ? 1 : 1 - Math.max(0, 1 - Math.abs((time % 3.7) - 3.55) / .09);
       sockets.forEach(socket => { socket.scale.y = Math.max(.08, blink); });
       ears.forEach((ear, i) => { ear.rotation.z = .1 - wake * .08 + (i ? flick : -flick) * .3; });
-      closed.visible = wake < .5; open.visible = wake >= .5;
+      closed.visible = wake < .5; smile.visible = !closed.visible;
+      open.visible = smile.visible && curious; happy.visible = smile.visible && !curious;
+      // A small happy bob while smiling.
+      if (happy.visible && !still) head.position.y += Math.abs(Math.sin(time * 4.2)) * .004;
       const swish = still ? 0 : Math.sin(time * (1.1 + wake * 2.2)) * (.06 + wake * .28) + flick * .35;
       shapeTail(swish, wake * .03);
       return wake > .001 && wake < .999;
