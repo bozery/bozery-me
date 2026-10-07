@@ -22,3 +22,20 @@ export const companion = {
 };
 
 export type Companion = typeof companion;
+
+/** The stuffed beagle lying next to the cat; it stands for the site's owner. */
+export const buddy = {
+  /** Tan coat, dark saddle, white markings, ears, blush, nose, tongue and collar colours. */
+  colors: {
+    tan: '#c4874c',
+    saddle: '#3b322d',
+    white: '#f3eee4',
+    ear: '#9b6034',
+    accent: '#e7b2ad',
+    nose: '#2a2422',
+    tongue: '#e58b8b',
+    collar: '#c8553d',
+  },
+};
+
+export type Buddy = typeof buddy;
